@@ -22,13 +22,30 @@
 
 ### 1. 安装 go-base CLI 工具
 
+**方式一：从远程仓库安装（推荐）**
+
 ```bash
 go install github.com/addls/go-base/cmd/go-base@latest
 ```
 
-### 2. 安装公司级 goctl 模板
+**方式二：本地开发安装**
 
-**重要**：goctl 的模板目录结构是 `~/.goctl/${goctl版本号}/api/`，需要先初始化再复制模板。
+```bash
+# 克隆或进入 go-base 项目目录
+cd go-base
+
+# 本地安装
+go install ./cmd/go-base
+
+# 验证安装
+go-base --version
+```
+
+### 2. 安装公司级 goctl 模板（可选）
+
+**注意**：如果使用 `go-base init` 命令，模板会自动安装，此步骤可跳过。
+
+**手动安装方式**（如果需要单独安装模板）：
 
 ```bash
 # 1. 初始化 goctl 模板目录（只需执行一次）
@@ -39,10 +56,10 @@ goctl -v
 
 # 3. 复制公司模板到对应版本的模板目录
 # 注意：使用 /* 确保文件直接复制到 api 目录下，而不是多一层目录
-cp -r go-base/template/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
+cp -r cmd/go-base/templates/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
 
 # 或者手动指定版本号（如果上面命令不工作）
-# cp -r go-base/template/api/* ~/.goctl/1.8.5/api/
+# cp -r cmd/go-base/templates/api/* ~/.goctl/1.8.5/api/
 ```
 
 **验证模板是否生效**：
@@ -50,15 +67,26 @@ cp -r go-base/template/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
 ```bash
 # 检查 main.tpl 是否包含 go-base 相关内容
 cat ~/.goctl/$(goctl -v | awk '{print $3}')/api/main.tpl | grep "github.com/addls/go-base"
-# 应该看到：import "github.com/addls/github.com/addls/go-base/pkg/bootstrap"
+# 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
+```
+
+**开发说明**：模板文件已集成到 `go-base` 命令中（使用 Go embed），位于 `cmd/go-base/templates/api/` 目录。修改模板文件后，重新编译安装即可：
+
+```bash
+go install ./cmd/go-base
 ```
 
 ### 3. 创建业务项目
 
-**推荐方式**：使用 go-base CLI 工具（自动处理配置文件重命名）
+**推荐方式**：使用 go-base CLI 工具（全自动初始化）
 
 ```bash
-# 使用 go-base init 初始化项目（会自动将配置文件重命名为 config.yaml）
+# 使用 go-base init 初始化项目，会自动完成：
+# 1. 检查并安装 goctl（如果未安装）
+# 2. 安装公司级 goctl 模板
+# 3. 创建项目结构
+# 4. 将配置文件重命名为 config.yaml
+# 5. 执行 go mod tidy
 go-base init demo_project
 
 # 编写 .api 文件后生成代码
@@ -113,6 +141,11 @@ func main() {
 go-base/
 ├── go.mod
 ├── README.md
+├── cmd/
+│   └── go-base/       # CLI 工具
+│       ├── main.go    # 命令入口
+│       └── templates/  # 模板文件（嵌入到命令中）
+│           └── api/    # goctl 公司级模板
 ├── pkg/
 │   ├── bootstrap/     # 启动器（HTTP/gRPC/Gateway）
 │   │   ├── http.go    # HTTP 服务启动
@@ -123,8 +156,6 @@ go-base/
 │   ├── response/      # 统一响应
 │   ├── errcode/       # 统一错误码
 │   └── middleware/    # 统一中间件
-└── template/
-    └── api/           # goctl 公司级模板
 ```
 
 ## 模块说明
@@ -365,10 +396,10 @@ goctl template init
 goctl -v
 
 # 3. 复制公司模板到对应版本的模板目录
-cp -r go-base/template/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
+cp -r cmd/go-base/templates/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
 
 # 或者手动指定版本号
-# cp -r go-base/template/api/* ~/.goctl/1.8.5/api/
+# cp -r cmd/go-base/templates/api/* ~/.goctl/1.8.5/api/
 ```
 
 ### 生成代码
