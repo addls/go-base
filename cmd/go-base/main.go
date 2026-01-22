@@ -13,7 +13,10 @@ import (
 )
 
 //go:embed templates/api/*
-var templateFS embed.FS
+var apiTemplateFS embed.FS
+
+//go:embed templates/rpc/*
+var rpcTemplateFS embed.FS
 
 var (
 	version = "v1.0.0"
@@ -30,17 +33,27 @@ It automatically handles configuration file naming and integrates go-base templa
 		Version: version,
 	}
 
+	var serviceType string
 	initCmd := &cobra.Command{
 		Use:   "init [project-name]",
-		Short: "Initialize a new go-zero API project with go-base",
-		Long: `Initialize a new go-zero API project using goctl api new,
+		Short: "Initialize a new go-zero project with go-base",
+		Long: `Initialize a new go-zero project (HTTP or gRPC) using goctl,
 then automatically rename the config file to config.yaml.
 
-Example:
-  go-base init demo_project`,
+Service types:
+  http - HTTP/REST API service (default)
+  rpc  - gRPC service
+
+Examples:
+  go-base init demo_project              # Initialize HTTP service
+  go-base init demo_project --type http  # Initialize HTTP service
+  go-base init demo_project --type rpc  # Initialize gRPC service`,
 		Args: cobra.ExactArgs(1),
-		RunE: runInit,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runInit(cmd, args, serviceType)
+		},
 	}
+	initCmd.Flags().StringVarP(&serviceType, "type", "t", "http", "Service type: http or rpc")
 
 	upgradeCmd := &cobra.Command{
 		Use:   "upgrade",
@@ -69,8 +82,14 @@ Example:
 	}
 }
 
-func runInit(cmd *cobra.Command, args []string) error {
+func runInit(cmd *cobra.Command, args []string, serviceType string) error {
 	projectName := args[0]
+
+	// 验证服务类型
+	serviceType = strings.ToLower(serviceType)
+	if serviceType != "http" && serviceType != "rpc" {
+		return fmt.Errorf("invalid service type: %s. Must be 'http' or 'rpc'", serviceType)
+	}
 
 	// 检查项目名称是否包含连字符（goctl 不支持）
 	if strings.Contains(projectName, "-") {
@@ -82,7 +101,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("project directory '%s' already exists. Please remove it first or use a different name", projectName)
 	}
 
-	fmt.Printf("🚀 Initializing project: %s\n", projectName)
+	serviceTypeUpper := strings.ToUpper(serviceType)
+	fmt.Printf("🚀 Initializing %s project: %s\n", serviceTypeUpper, projectName)
 
 	// 1. 检查并安装 goctl
 	fmt.Println("\n📦 Step 1: Checking and installing goctl...")
@@ -98,18 +118,30 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ Templates installed")
 
-	// 3. 执行 goctl api new
-	fmt.Println("\n🏗️  Step 3: Creating project structure...")
-	goctlCmd := exec.Command("goctl", "api", "new", projectName)
+	// 3. 执行 goctl 命令创建项目结构
+	fmt.Printf("\n🏗️  Step 3: Creating %s project structure...\n", serviceTypeUpper)
+	var goctlCmd *exec.Cmd
+	if serviceType == "http" {
+		goctlCmd = exec.Command("goctl", "api", "new", projectName)
+	} else {
+		goctlCmd = exec.Command("goctl", "rpc", "new", projectName)
+	}
 	goctlCmd.Stdout = os.Stdout
 	goctlCmd.Stderr = os.Stderr
 
 	if err := goctlCmd.Run(); err != nil {
-		return fmt.Errorf("failed to run goctl api new: %w", err)
+		return fmt.Errorf("failed to run goctl %s new: %w", serviceType, err)
 	}
 
 	// 重命名配置文件
-	configFile := filepath.Join(projectName, "etc", projectName+"-api.yaml")
+	var configFile string
+	if serviceType == "http" {
+		// HTTP 服务：{project-name}-api.yaml -> config.yaml
+		configFile = filepath.Join(projectName, "etc", projectName+"-api.yaml")
+	} else {
+		// RPC 服务：{project-name}.yaml -> config.yaml
+		configFile = filepath.Join(projectName, "etc", projectName+".yaml")
+	}
 	targetFile := filepath.Join(projectName, "etc", "config.yaml")
 
 	if _, err := os.Stat(configFile); err == nil {
@@ -173,12 +205,18 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Printf("\n✅ Project %s initialized successfully!\n", projectName)
+	fmt.Printf("\n✅ %s project %s initialized successfully!\n", serviceTypeUpper, projectName)
 	fmt.Printf("\nNext steps:\n")
 	fmt.Printf("  1. cd %s\n", projectName)
-	fmt.Printf("  2. Edit api/%s.api to define your API\n", projectName)
-	fmt.Printf("  3. Run: goctl api go -api api/%s.api -dir . -style go_zero\n", projectName)
-	fmt.Printf("  4. Run: go run %s.go\n", projectName)
+	if serviceType == "http" {
+		fmt.Printf("  2. Edit api/%s.api to define your API\n", projectName)
+		fmt.Printf("  3. Run: goctl api go -api api/%s.api -dir . -style go_zero\n", projectName)
+		fmt.Printf("  4. Run: go run %s.go\n", projectName)
+	} else {
+		fmt.Printf("  2. Edit proto/%s.proto to define your gRPC service\n", projectName)
+		fmt.Printf("  3. Run: goctl rpc protoc proto/%s.proto --go_out=. --go-grpc_out=. --zrpc_out=.\n", projectName)
+		fmt.Printf("  4. Run: go run %s.go\n", projectName)
+	}
 
 	return nil
 }
@@ -237,14 +275,25 @@ func installGoBaseTemplates() error {
 		return fmt.Errorf("cannot parse goctl version from: %s", versionStr)
 	}
 
-	// 3. 复制模板文件（从嵌入的文件系统）
-	goctlTemplateDir := filepath.Join(os.Getenv("HOME"), ".goctl", version, "api")
-	if err := os.MkdirAll(goctlTemplateDir, 0755); err != nil {
-		return fmt.Errorf("failed to create template directory: %w", err)
+	// 3. 复制 API 模板文件（从嵌入的文件系统）
+	apiTemplateDir := filepath.Join(os.Getenv("HOME"), ".goctl", version, "api")
+	if err := os.MkdirAll(apiTemplateDir, 0755); err != nil {
+		return fmt.Errorf("failed to create api template directory: %w", err)
+	}
+	if err := copyTemplatesFromEmbed(apiTemplateFS, "templates/api", apiTemplateDir); err != nil {
+		return fmt.Errorf("failed to copy api templates: %w", err)
 	}
 
-	// 从嵌入的文件系统复制模板文件
-	return copyTemplatesFromEmbed(templateFS, "templates/api", goctlTemplateDir)
+	// 4. 复制 RPC 模板文件（从嵌入的文件系统）
+	rpcTemplateDir := filepath.Join(os.Getenv("HOME"), ".goctl", version, "rpc")
+	if err := os.MkdirAll(rpcTemplateDir, 0755); err != nil {
+		return fmt.Errorf("failed to create rpc template directory: %w", err)
+	}
+	if err := copyTemplatesFromEmbed(rpcTemplateFS, "templates/rpc", rpcTemplateDir); err != nil {
+		return fmt.Errorf("failed to copy rpc templates: %w", err)
+	}
+
+	return nil
 }
 
 // copyTemplatesFromEmbed 从嵌入的文件系统复制模板文件

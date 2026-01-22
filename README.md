@@ -84,23 +84,35 @@ goctl template init
 # 2. 查找 goctl 版本号（例如：1.8.5）
 goctl -v
 
-# 3. 复制公司模板到对应版本的模板目录
+# 3. 复制 API 模板到对应版本的模板目录
 # 注意：使用 /* 确保文件直接复制到 api 目录下，而不是多一层目录
 cp -r cmd/go-base/templates/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
 
+# 4. 复制 RPC 模板到对应版本的模板目录
+cp -r cmd/go-base/templates/rpc/* ~/.goctl/$(goctl -v | awk '{print $3}')/rpc/
+
 # 或者手动指定版本号（如果上面命令不工作）
 # cp -r cmd/go-base/templates/api/* ~/.goctl/1.8.5/api/
+# cp -r cmd/go-base/templates/rpc/* ~/.goctl/1.8.5/rpc/
 ```
 
 **验证模板是否生效**：
 
 ```bash
-# 检查 main.tpl 是否包含 go-base 相关内容
+# 检查 API 模板 main.tpl 是否包含 go-base 相关内容
 cat ~/.goctl/$(goctl -v | awk '{print $3}')/api/main.tpl | grep "github.com/addls/go-base"
+# 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
+
+# 检查 RPC 模板 main.tpl 是否包含 go-base 相关内容
+cat ~/.goctl/$(goctl -v | awk '{print $3}')/rpc/main.tpl | grep "github.com/addls/go-base"
 # 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
 ```
 
-**开发说明**：模板文件已集成到 `go-base` 命令中（使用 Go embed），位于 `cmd/go-base/templates/api/` 目录。修改模板文件后，重新编译安装即可：
+**开发说明**：模板文件已集成到 `go-base` 命令中（使用 Go embed），位于：
+- `cmd/go-base/templates/api/` - HTTP/REST API 服务模板
+- `cmd/go-base/templates/rpc/` - gRPC 服务模板
+
+修改模板文件后，重新编译安装即可：
 
 ```bash
 go install ./cmd/go-base
@@ -111,17 +123,44 @@ go install ./cmd/go-base
 **推荐方式**：使用 go-base CLI 工具（全自动初始化）
 
 ```bash
-# 使用 go-base init 初始化项目，会自动完成：
-# 1. 检查并安装 goctl（如果未安装）
-# 2. 安装公司级 goctl 模板
-# 3. 创建项目结构
-# 4. 将配置文件重命名为 config.yaml
-# 5. 执行 go mod tidy
+# 初始化 HTTP/REST API 服务（默认）
 go-base init demo_project
+# 或显式指定
+go-base init demo_project --type http
 
-# 编写 .api 文件后生成代码
+# 初始化 gRPC 服务
+go-base init demo_project --type rpc
+
+# 使用短参数
+go-base init demo_project -t rpc
+```
+
+**init 命令会自动完成**：
+1. 检查并安装 goctl（如果未安装）
+2. 安装公司级 goctl 模板（API 和 RPC）
+3. 创建项目结构（使用 `goctl api new` 或 `goctl rpc new`）
+4. 将配置文件重命名为 `config.yaml`
+5. 执行 `go mod tidy`
+6. 清理未使用的导入
+
+**后续步骤**：
+
+**HTTP 服务**：
+```bash
 cd demo_project
+# 编写 .api 文件后生成代码
 goctl api go -api api/demo_project.api -dir . -style go_zero
+# 运行服务
+go run demo_project.go
+```
+
+**gRPC 服务**：
+```bash
+cd demo_project
+# 编写 .proto 文件后生成代码
+goctl rpc protoc proto/demo_project.proto --go_out=. --go-grpc_out=. --zrpc_out=.
+# 运行服务
+go run demo_project.go
 ```
 
 **或者**：手动使用 goctl
@@ -175,7 +214,8 @@ go-base/
 │   └── go-base/       # CLI 工具
 │       ├── main.go    # 命令入口
 │       └── templates/  # 模板文件（嵌入到命令中）
-│           └── api/    # goctl 公司级模板
+│           ├── api/    # goctl HTTP/REST API 服务模板
+│           └── rpc/    # goctl gRPC 服务模板
 ├── pkg/
 │   ├── bootstrap/     # 启动器（HTTP/gRPC/Gateway）
 │   │   ├── http.go    # HTTP 服务启动
@@ -508,11 +548,15 @@ goctl template init
 # 2. 查找 goctl 版本号（例如：1.8.5）
 goctl -v
 
-# 3. 复制公司模板到对应版本的模板目录
+# 3. 复制 API 模板到对应版本的模板目录
 cp -r cmd/go-base/templates/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
+
+# 4. 复制 RPC 模板到对应版本的模板目录
+cp -r cmd/go-base/templates/rpc/* ~/.goctl/$(goctl -v | awk '{print $3}')/rpc/
 
 # 或者手动指定版本号
 # cp -r cmd/go-base/templates/api/* ~/.goctl/1.8.5/api/
+# cp -r cmd/go-base/templates/rpc/* ~/.goctl/1.8.5/rpc/
 ```
 
 ### 生成代码
@@ -520,14 +564,21 @@ cp -r cmd/go-base/templates/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
 ```bash
 # 生成 API 服务
 goctl api go -api api/user.api -dir . -style go_zero
+
+# 生成 gRPC 服务
+goctl rpc protoc user.proto --go_out=. --go-grpc_out=. --zrpc_out=.
 ```
 
 **验证模板是否生效**：
 
 ```bash
-# 检查 main.tpl 是否包含 go-base 相关内容
+# 检查 API 模板 main.tpl 是否包含 go-base 相关内容
 cat ~/.goctl/$(goctl -v | awk '{print $3}')/api/main.tpl | grep "go-base"
-# 应该看到：import "github.com/addls/go-base/pkg/bootstrap" 和 "github.com/addls/go-base/pkg/config"
+# 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
+
+# 检查 RPC 模板 main.tpl 是否包含 go-base 相关内容
+cat ~/.goctl/$(goctl -v | awk '{print $3}')/rpc/main.tpl | grep "go-base"
+# 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
 ```
 
 ## License
