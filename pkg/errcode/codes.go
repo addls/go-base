@@ -28,26 +28,26 @@ var (
 	ErrAlreadyExists    = NewWithHTTP(20003, "资源已存在", http.StatusConflict)
 	ErrUnauthorized     = NewWithHTTP(20004, "未授权", http.StatusUnauthorized)
 	ErrForbidden        = NewWithHTTP(20005, "禁止访问", http.StatusForbidden)
-	ErrValidation       = NewWithHTTP(20006, "数据验证失败", http.StatusBadRequest)
-	ErrDataParse        = NewWithHTTP(20007, "数据解析失败", http.StatusBadRequest)
+	ErrValidationFailed = NewWithHTTP(20006, "数据验证失败", http.StatusBadRequest)
+	ErrParseFailed      = NewWithHTTP(20007, "数据解析失败", http.StatusBadRequest)
 )
 
 // ============== 认证授权 (21xxx) ==============
 
 var (
-	ErrTokenInvalid  = NewWithHTTP(21001, "Token 无效", http.StatusUnauthorized)
-	ErrTokenExpired  = NewWithHTTP(21002, "Token 已过期", http.StatusUnauthorized)
-	ErrTokenMissing  = NewWithHTTP(21003, "Token 缺失", http.StatusUnauthorized)
-	ErrNoPermission  = NewWithHTTP(21004, "权限不足", http.StatusForbidden)
+	ErrTokenInvalid     = NewWithHTTP(21001, "Token 无效", http.StatusUnauthorized)
+	ErrTokenExpired     = NewWithHTTP(21002, "Token 已过期", http.StatusUnauthorized)
+	ErrTokenMissing     = NewWithHTTP(21003, "Token 缺失", http.StatusUnauthorized)
+	ErrPermissionDenied = NewWithHTTP(21004, "权限不足", http.StatusForbidden)
 )
 
 // ============== 数据库 (22xxx) ==============
 
 var (
-	ErrDBOperation  = NewWithHTTP(22001, "数据库操作失败", http.StatusInternalServerError)
-	ErrDBConnection = NewWithHTTP(22002, "数据库连接失败", http.StatusInternalServerError)
-	ErrDBDuplicate  = NewWithHTTP(22003, "数据重复", http.StatusConflict)
-	ErrDBNotFound   = NewWithHTTP(22004, "数据不存在", http.StatusNotFound)
+	ErrDatabaseOperation  = NewWithHTTP(22001, "数据库操作失败", http.StatusInternalServerError)
+	ErrDatabaseConnection = NewWithHTTP(22002, "数据库连接失败", http.StatusInternalServerError)
+	ErrDatabaseDuplicate  = NewWithHTTP(22003, "数据重复", http.StatusConflict)
+	ErrDatabaseNotFound   = NewWithHTTP(22004, "数据不存在", http.StatusNotFound)
 )
 
 // ============== 用户模块 (301xx) ==============

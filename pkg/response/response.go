@@ -89,6 +89,19 @@ func ErrorWithCode(w http.ResponseWriter, code int, msg string) {
 	})
 }
 
+// ErrorInvalidParam 参数错误响应（用于参数解析失败）
+// 将普通 error 转换为 errcode.ErrInvalidParam
+func ErrorInvalidParam(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+	// 使用 ErrInvalidParam，但保留原始错误信息
+	httpx.WriteJson(w, errcode.ErrInvalidParam.GetHTTPCode(), &Response{
+		Code: errcode.ErrInvalidParam.Code,
+		Msg:  err.Error(), // 保留原始错误信息，便于调试
+	})
+}
+
 // ----- 带 TraceID 的版本 -----
 
 // OkWithTrace 成功响应（带 TraceID）

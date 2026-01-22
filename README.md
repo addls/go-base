@@ -41,6 +41,36 @@ go install ./cmd/go-base
 go-base --version
 ```
 
+**升级 go-base CLI 工具**
+
+```bash
+# 使用 upgrade 命令自动升级到当前主版本的最新小版本
+# 注意：如果在 Go 项目目录中运行，会自动升级项目中的 go-base 依赖
+go-base upgrade
+
+# 手动升级 CLI 工具到当前主版本的最新小版本（例如 v1.x.x）
+go install github.com/addls/go-base/cmd/go-base@v1
+
+# 手动升级项目依赖到当前主版本的最新小版本（在项目目录中运行）
+go get github.com/addls/go-base@v1
+go mod tidy
+
+# 如果需要升级到最新版本（可能跨主版本，不推荐）
+go install github.com/addls/go-base/cmd/go-base@latest
+go get github.com/addls/go-base@latest
+```
+
+**升级说明**：
+- `go-base upgrade` 会同时升级：
+  1. **CLI 工具本身**：升级到**当前主版本号的最新小版本**
+     - 例如：如果当前是 `v1.0.0`，会升级到 `v1.x.x` 的最新版本（如 `v1.0.5` 或 `v1.1.0`）
+     - 不会跨主版本升级（如不会从 v1 升级到 v2）
+  2. **项目依赖**：升级到**相同主版本号的最新小版本**
+     - 如果在 Go 项目目录中运行，会自动升级 `github.com/addls/go-base` 依赖
+     - 确保 CLI 工具和项目依赖保持在同一主版本，避免兼容性问题
+- 如果当前目录不是 Go 项目或没有 go-base 依赖，只会升级 CLI 工具
+- **版本兼容性**：CLI 工具和项目依赖都升级到同一主版本，确保功能兼容
+
 ### 2. 安装公司级 goctl 模板（可选）
 
 **注意**：如果使用 `go-base init` 命令，模板会自动安装，此步骤可跳过。
@@ -354,35 +384,118 @@ cfg := bootstrap.MustLoadConfig[YourConfig]()
 
 ### response - 统一响应
 
+**响应结构**：
+```json
+{
+  "code": 0,           // 业务错误码，0 表示成功
+  "msg": "success",    // 消息
+  "data": {},          // 数据（可选）
+  "traceId": "xxx"     // 追踪ID（可选）
+}
+```
+
+**使用方式**：
+
 ```go
-import "github.com/addls/github.com/addls/go-base/pkg/response"
+import "github.com/addls/go-base/pkg/response"
 
 // 成功响应
-response.Ok(w)
-response.OkWithData(w, data)
-response.OkWithPage(w, list, total, page, pageSize)
+response.Ok(w)                                    // 无数据
+response.OkWithData(w, data)                     // 带数据
+response.OkWithPage(w, list, total, page, pageSize) // 分页数据
+response.OkWithMsg(w, "操作成功")                 // 自定义消息
 
-// 错误响应  
-response.Error(w, err)
-response.ErrorWithMsg(w, errcode.ErrInvalidParam, "name 不能为空")
+// 错误响应
+response.Error(w, err)                            // 自动识别 errcode.Error 或普通 error
+response.ErrorInvalidParam(w, err)                // 参数错误（用于参数解析失败）
+response.ErrorWithMsg(w, errcode.ErrNotFound, "用户不存在") // 指定错误码和消息
+response.ErrorWithCode(w, 20001, "自定义错误")    // 直接指定错误码和消息
+
+// 统一处理（推荐）
+response.HandleResult(w, resp, err)               // 自动判断 err，成功返回数据，失败返回错误
+response.HandleResultWithPage(w, list, total, page, pageSize, err) // 分页结果处理
+```
+
+**Handler 中的使用**（模板已自动生成）：
+
+```go
+func UserHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.UserRequest
+		// 参数解析失败自动转换为 errcode.ErrInvalidParam
+		if err := httpx.Parse(r, &req); err != nil {
+			response.ErrorInvalidParam(w, err)
+			return
+		}
+
+		l := logic.NewUserLogic(r.Context(), svcCtx)
+		resp, err := l.GetUser(&req)
+		// 自动处理：err != nil 返回错误，否则返回数据
+		response.HandleResult(w, resp, err)
+	}
+}
 ```
 
 ### errcode - 错误码
 
+**错误码规范**：
+- `1xxxx`: 系统级错误
+- `2xxxx`: 通用业务错误
+- `3xxxx`: 具体业务错误（业务系统自定义）
+
+**使用方式**：
+
 ```go
-import "github.com/addls/github.com/addls/go-base/pkg/errcode"
+import "github.com/addls/go-base/pkg/errcode"
 
 // 预定义错误码
-errcode.OK           // 0 - 成功
-errcode.ErrInternal  // 10001 - 内部错误
-errcode.ErrInvalidParam // 20001 - 参数错误
+errcode.OK                    // 0 - 成功
+errcode.ErrInternal           // 10001 - 服务内部错误
+errcode.ErrInvalidParam       // 20001 - 参数错误
+errcode.ErrNotFound           // 20002 - 资源不存在
+errcode.ErrUnauthorized       // 20004 - 未授权
+errcode.ErrForbidden          // 20005 - 禁止访问
+errcode.ErrTokenInvalid       // 21001 - Token 无效
+errcode.ErrDatabaseOperation  // 22001 - 数据库操作失败
 
-// 自定义错误码
-var ErrUserNotFound = errcode.New(30101, "用户不存在")
+// 在 Logic 层返回错误
+func (l *UserLogic) GetUser(req *types.UserRequest) (*types.UserResponse, error) {
+	user, err := l.svcCtx.UserModel.FindOne(l.ctx, req.ID)
+	if err != nil {
+		// 方式1：使用预定义错误码
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcode.ErrUserNotFound  // 业务自定义错误码
+		}
+		return nil, errcode.ErrDatabaseOperation.WithMsg(err.Error())
+	}
+	
+	// 方式2：自定义业务错误码（在业务项目的 errcode 包中定义）
+	if user.Status == 0 {
+		return nil, errcode.ErrUserDisabled
+	}
+	
+	return &types.UserResponse{User: user}, nil
+}
 
-// 带详情
+// 方式3：创建自定义错误码（在业务项目中）
+// 在 internal/errcode/codes.go 中：
+package errcode
+
+import "github.com/addls/go-base/pkg/errcode"
+
+var (
+	ErrUserNotFound = errcode.New(30101, "用户不存在")
+	ErrUserDisabled = errcode.New(30104, "用户已禁用")
+)
+
+// 方式4：带自定义消息
 err := errcode.ErrInvalidParam.WithMsg("name 字段不能为空")
 ```
+
+**错误码自动映射 HTTP 状态码**：
+- `errcode.Error` 结构包含 `HTTPCode` 字段
+- `response.Error()` 会自动使用正确的 HTTP 状态码
+- 业务错误码默认返回 `200 OK`，系统错误码返回对应 HTTP 状态码
 
 ## goctl 模板使用
 

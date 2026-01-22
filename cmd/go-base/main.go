@@ -42,7 +42,26 @@ Example:
 		RunE: runInit,
 	}
 
+	upgradeCmd := &cobra.Command{
+		Use:   "upgrade",
+		Short: "Upgrade go-base CLI tool to the latest patch version",
+		Long: `Upgrade go-base CLI tool to the latest patch version within the current major version.
+
+This command will:
+  1. Upgrade the CLI tool to the latest patch version of the current major version
+     (e.g., if current is v1.0.0, upgrade to v1.x.x latest)
+  2. If run in a Go project directory, also upgrade the github.com/addls/go-base
+     dependency to the same major version's latest patch version
+
+This ensures CLI tool and project dependencies stay compatible.
+
+Example:
+  go-base upgrade`,
+		RunE: runUpgrade,
+	}
+
 	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(upgradeCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -56,6 +75,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// 检查项目名称是否包含连字符（goctl 不支持）
 	if strings.Contains(projectName, "-") {
 		return fmt.Errorf("project name cannot contain hyphens (goctl limitation)")
+	}
+
+	// 检查项目目录是否已存在
+	if _, err := os.Stat(projectName); err == nil {
+		return fmt.Errorf("project directory '%s' already exists. Please remove it first or use a different name", projectName)
 	}
 
 	fmt.Printf("🚀 Initializing project: %s\n", projectName)
@@ -251,4 +275,108 @@ func copyTemplatesFromEmbed(embedFS embed.FS, srcDir, dstDir string) error {
 		// 写入目标文件
 		return os.WriteFile(dstPath, data, 0644)
 	})
+}
+
+// runUpgrade 执行升级命令
+func runUpgrade(cmd *cobra.Command, args []string) error {
+	fmt.Printf("🔄 Upgrading go-base CLI tool...\n")
+	fmt.Printf("Current version: %s\n\n", version)
+
+	// 检查 go 命令是否可用
+	if _, err := exec.LookPath("go"); err != nil {
+		return fmt.Errorf("go command not found. Please install Go first: https://golang.org/dl/")
+	}
+
+	// 1. 升级 CLI 工具（升级到当前主版本的最新小版本）
+	majorVersion := getMajorVersion(version)
+	cliTarget := fmt.Sprintf("github.com/addls/go-base/cmd/go-base@%s", majorVersion)
+	fmt.Printf("📦 Step 1: Upgrading go-base CLI tool to %s (latest patch version)...\n", majorVersion)
+	installCmd := exec.Command("go", "install", cliTarget)
+	installCmd.Stdout = os.Stdout
+	installCmd.Stderr = os.Stderr
+
+	if err := installCmd.Run(); err != nil {
+		return fmt.Errorf("failed to upgrade go-base CLI: %w\n\nPlease try manually: go install %s", err, cliTarget)
+	}
+	fmt.Println("✓ CLI tool upgraded")
+
+	// 2. 检查当前目录是否是 Go 项目，如果是则升级依赖
+	if err := upgradeProjectDependency(); err != nil {
+		// 升级依赖失败不影响 CLI 工具升级，只打印警告
+		majorVersion := getMajorVersion(version)
+		fmt.Printf("\n⚠ Warning: Failed to upgrade project dependency: %v\n", err)
+		fmt.Println("You can manually upgrade by running:")
+		fmt.Printf("  go get github.com/addls/go-base@%s\n", majorVersion)
+		fmt.Println("  go mod tidy")
+	}
+
+	fmt.Println("\n✅ Upgrade completed successfully!")
+	fmt.Println("\nTo verify the new version, run:")
+	fmt.Println("  go-base --version")
+
+	return nil
+}
+
+// getMajorVersion 从版本号中提取主版本号（如 v1.0.0 -> v1）
+func getMajorVersion(v string) string {
+	// 移除前缀 "v" 如果存在
+	v = strings.TrimPrefix(v, "v")
+	
+	// 按 "." 分割版本号
+	parts := strings.Split(v, ".")
+	if len(parts) > 0 {
+		// 返回主版本号，如 "1" -> "v1"
+		return "v" + parts[0]
+	}
+	
+	// 如果无法解析，返回原版本号
+	return v
+}
+
+// upgradeProjectDependency 升级当前项目中的 go-base 依赖
+func upgradeProjectDependency() error {
+	// 检查当前目录是否有 go.mod 文件
+	if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
+		// 不是 Go 项目，跳过
+		return nil
+	}
+
+	// 读取 go.mod 检查是否有 go-base 依赖
+	goModData, err := os.ReadFile("go.mod")
+	if err != nil {
+		return fmt.Errorf("failed to read go.mod: %w", err)
+	}
+
+	// 检查是否包含 go-base 依赖
+	if !strings.Contains(string(goModData), "github.com/addls/go-base") {
+		// 没有 go-base 依赖，跳过
+		return nil
+	}
+
+	// 从当前 CLI 版本中提取主版本号
+	majorVersion := getMajorVersion(version)
+	targetVersion := fmt.Sprintf("github.com/addls/go-base@%s", majorVersion)
+
+	// 升级项目依赖
+	fmt.Printf("\n📦 Step 2: Upgrading github.com/addls/go-base dependency to %s (latest patch version)...\n", majorVersion)
+	
+	// 使用 go get 更新依赖到当前主版本的最新小版本
+	getCmd := exec.Command("go", "get", targetVersion)
+	getCmd.Stdout = os.Stdout
+	getCmd.Stderr = os.Stderr
+	if err := getCmd.Run(); err != nil {
+		return fmt.Errorf("failed to run go get: %w", err)
+	}
+
+	// 运行 go mod tidy 整理依赖
+	fmt.Println("📦 Running go mod tidy...")
+	tidyCmd := exec.Command("go", "mod", "tidy")
+	tidyCmd.Stdout = os.Stdout
+	tidyCmd.Stderr = os.Stderr
+	if err := tidyCmd.Run(); err != nil {
+		return fmt.Errorf("failed to run go mod tidy: %w", err)
+	}
+
+	fmt.Println("✓ Project dependency upgraded")
+	return nil
 }
