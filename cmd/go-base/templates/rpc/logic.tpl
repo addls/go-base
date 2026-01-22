@@ -1,27 +1,24 @@
-package {{.pkgName}}
+package {{.packageName}}
 
 import (
 	"context"
 
 	{{.imports}}
+
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type {{.logic}} struct {
-	logx.Logger
+type {{.logicName}} struct {
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
+	logx.Logger
 }
 
-func New{{.logic}}(ctx context.Context, svcCtx *svc.ServiceContext) *{{.logic}} {
-	return &{{.logic}}{
-		Logger: logx.WithContext(ctx),
+func New{{.logicName}}(ctx context.Context, svcCtx *svc.ServiceContext) *{{.logicName}} {
+	return &{{.logicName}}{
 		ctx:    ctx,
 		svcCtx: svcCtx,
+		Logger: logx.WithContext(ctx),
 	}
 }
-
-func (l *{{.logic}}) {{.function}}({{.request}}) {{.responseType}} {
-	// todo: add your logic here and delete this line
-
-	{{.returnString}}
-}
+{{.functions}}

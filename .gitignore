@@ -19,8 +19,8 @@ go.work
 
 # ==================== 项目特定 ====================
 # go-base CLI 工具编译产物
-./go-base
-./cmd/go-base/go-base
+/go-base
+cmd/go-base/go-base
 
 # ==================== IDE 配置 ====================
 # VSCode

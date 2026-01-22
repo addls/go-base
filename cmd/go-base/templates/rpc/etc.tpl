@@ -13,7 +13,7 @@ Mode: dev
 
 # ==================== gRPC 服务配置 (RpcServerConf) ====================
 # 监听地址（格式：host:port 或 :port）
-ListenOn: {{.listenOn}}
+ListenOn: 0.0.0.0:8080
 
 # 服务注册配置（可选，使用 etcd 进行服务发现）
 # Etcd:
@@ -54,6 +54,10 @@ ListenOn: {{.listenOn}}
 Log:
   # 日志模式: console(控制台), file(文件), volume(容器卷)
   Mode: console
+  
+  # 日志格式: json(JSON格式，默认), plain(文本格式)
+  # 默认值: json
+  # Encoding: json
   
   # 日志级别: debug, info, warn, error
   Level: info

@@ -1,16 +1,22 @@
+{{.head}}
+
 package server
 
 import (
-	{{.importPackages}}
+	{{if .notStream}}"context"{{end}}
+
+	{{.imports}}
 )
 
-type {{.service}}Server struct {
+type {{.server}}Server struct {
 	svcCtx *svc.ServiceContext
 	{{.unimplementedServer}}
 }
 
-func New{{.service}}Server(svcCtx *svc.ServiceContext) *{{.service}}Server {
-	return &{{.service}}Server{
+func New{{.server}}Server(svcCtx *svc.ServiceContext) *{{.server}}Server {
+	return &{{.server}}Server{
 		svcCtx: svcCtx,
 	}
 }
+
+{{.funcs}}

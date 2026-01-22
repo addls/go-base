@@ -42,6 +42,10 @@ Log:
   # 日志模式: console(控制台), file(文件), volume(容器卷)
   Mode: console
   
+  # 日志格式: json(JSON格式，默认), plain(文本格式)
+  # 默认值: json
+  # Encoding: json
+  
   # 日志级别: debug, info, warn, error
   Level: info
   
