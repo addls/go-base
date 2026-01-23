@@ -6,7 +6,6 @@ import (
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/gateway"
-	"github.com/zeromicro/go-zero/rest"
 
 	"github.com/addls/go-base/pkg/config"
 	"github.com/addls/go-base/pkg/middleware"
@@ -79,23 +78,20 @@ func RunGateway(opts ...GatewayOption) {
 		conf.MustLoad(config.ConfigFile(), &c)
 	}
 
-	// 收集所有中间件
-	var middlewares []rest.Middleware
-	
+	// 创建 Gateway 服务器
+	gw := gateway.MustNewServer(c.GatewayConf)
+	defer gw.Stop()
+
+	// 注册中间件（类似 http.go 的方式）
 	// 如果配置了 JWT，添加 JWT 中间件
 	if c.Jwt.Secret != "" {
 		jwtMw := middleware.RegisterJwtMiddleware(c.Jwt.Secret, c.Jwt.SkipPaths)
-		middlewares = append(middlewares, jwtMw)
+		gw.Server.Use(jwtMw)
 		logx.Infof("JWT middleware configured with secret (length: %d), skip paths: %v", len(c.Jwt.Secret), c.Jwt.SkipPaths)
 	}
 	
 	// 添加统一响应格式中间件
-	middlewares = append(middlewares, middleware.ResponseMiddleware())
-	
-	// 创建 Gateway 服务器（传入中间件选项）
-	gw := gateway.MustNewServer(c.GatewayConf, gateway.WithMiddleware(middlewares...))
-	logx.Infof("Registered %d middlewares via gateway.WithMiddleware", len(middlewares))
-	defer gw.Stop()
+	gw.Server.Use(middleware.ResponseMiddleware())
 
 	// 启动前回调（可用于注册其他中间件等）
 	if o.beforeStart != nil {

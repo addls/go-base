@@ -181,6 +181,57 @@ Upstreams:
         Path: /order
 ```
 
+### Gateway JWT 鉴权与用户信息透传（HTTP -> gRPC）
+
+在 `gateway/etc/config.yaml` 中开启 `Jwt` 配置后，Gateway 会在转发前做 JWT 校验；校验通过后，会把用户信息透传给后端 gRPC 服务。
+
+**1) 开启 JWT**
+
+```yaml
+Jwt:
+  Secret: a-string-secret-at-least-256-bits-long
+  SkipPaths:
+    - /health
+    - /ping
+```
+
+**2) Token 里需要包含的字段**
+
+当前实现基于 go-zero 的 `handler.Authorize`：它会把 **非标准 claims** 写入 `context`（标准字段如 `sub/exp/iat/...` 会被忽略）。
+
+因此建议在 JWT payload 里使用非标准字段：
+
+- **`uid`**：用户 ID（字符串）
+- **`name`**：用户名（字符串）
+
+示例 payload（仅示例）：
+
+```json
+{
+  "uid": "1234567890",
+  "name": "John Doe"
+}
+```
+
+**3) Gateway 如何透传到 gRPC**
+
+Gateway 会设置以下 Header（grpc-gateway 约定，带 `Grpc-Metadata-` 前缀的 Header 会进入 gRPC metadata）：
+
+- **`Grpc-Metadata-x-jwt-user-id: <uid>`**
+- **`Grpc-Metadata-x-jwt-user-name: <name>`**
+
+**4) gRPC 服务里如何获取**
+
+在 RPC 逻辑中使用 `pkg/auth`：
+
+```go
+userID := auth.GetUserID(ctx)
+userName := auth.GetUserName(ctx)
+
+// 调试用：拿到整个 metadata（包含系统字段）
+claims := auth.GetClaims(ctx)
+```
+
 ## 统一启动方式
 
 ### HTTP 服务

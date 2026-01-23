@@ -72,7 +72,9 @@ Middlewares:
 
 # ==================== JWT 配置 (go-base 扩展，可选) ====================
 # JWT 认证配置（如果启用，Gateway 会在请求转发前进行 JWT 验证）
-# 验证成功后，JWT claims 会通过 HTTP Header (X-Jwt-Claims) 透传给后端服务
+# 验证成功后，Gateway 会将用户信息透传给后端 gRPC（通过 grpc-gateway 约定的 Grpc-Metadata- 前缀 Header）：
+# - Grpc-Metadata-x-jwt-user-id
+# - Grpc-Metadata-x-jwt-user-name
 # Jwt:
 #   Secret: your-jwt-secret-key  # JWT 密钥（必需）
 #   SkipPaths:                    # 跳过 JWT 验证的路径列表（可选）
