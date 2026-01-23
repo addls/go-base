@@ -189,15 +189,16 @@ Upstreams:
 package main
 
 import (
+    "github.com/zeromicro/go-zero/rest"
     "github.com/addls/go-base/pkg/bootstrap"
+    "demo-project/internal/config"
     "demo-project/internal/handler"
     "demo-project/internal/svc"
 )
 
 func main() {
     bootstrap.RunHttp(bootstrap.WithHttpRoutes(func(server *rest.Server) {
-        ctx := svc.NewServiceContext(*bootstrap.MustLoadConfig[config.Config]())
-        handler.RegisterHandlers(server, ctx)
+        handler.RegisterHandlers(server, svc.NewServiceContext(*bootstrap.MustLoadConfig[config.Config]()))
     }))
 }
 ```
@@ -209,14 +210,15 @@ package main
 
 import (
     "github.com/addls/go-base/pkg/bootstrap"
+    "google.golang.org/grpc"
+    "demo-project/internal/config"
     "demo-project/internal/server"
-    pb "demo-project/pb"
+    "demo-project/internal/svc"
 )
 
 func main() {
     bootstrap.RunRpc(bootstrap.WithRpcService(func(grpcServer *grpc.Server) {
-        ctx := svc.NewServiceContext(*bootstrap.MustLoadConfig[config.Config]())
-        pb.RegisterPingServer(grpcServer, server.NewPingServer(ctx))
+        server.RegisterServices(grpcServer, svc.NewServiceContext(*bootstrap.MustLoadConfig[config.Config]()))
     }))
 }
 ```
