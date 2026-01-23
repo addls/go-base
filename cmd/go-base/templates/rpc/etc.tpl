@@ -13,7 +13,7 @@ Mode: dev
 
 # ==================== gRPC 服务配置 (RpcServerConf) ====================
 # 监听地址（格式：host:port 或 :port）
-ListenOn: 0.0.0.0:8080
+ListenOn: 0.0.0.0:50001
 
 # 服务注册配置（可选，使用 etcd 进行服务发现）
 # Etcd:

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"google.golang.org/grpc"
 	"github.com/addls/go-base/pkg/bootstrap"
+	"google.golang.org/grpc"
 	{{.imports}}
 )
 

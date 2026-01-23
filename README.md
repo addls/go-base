@@ -2,246 +2,194 @@
 
 基于 go-zero 的企业级微服务框架底座，提供统一的启动方式、响应结构、错误码、中间件等基础能力。
 
-## 设计理念
-
-- **统一入口**：所有服务类型（HTTP/gRPC/Gateway）使用统一的启动函数和配置方式
-- **配置统一**：配置文件路径、加载方式、应用配置字段全部统一管理
-- **命名规范**：所有类型和函数采用明确的前缀（Http/Rpc/Gateway）区分
-- **职责分离**：启动逻辑、配置管理、响应处理、错误码等模块独立
-
-## 特性
-
-- **一句话启动**：`bootstrap.RunHttp()` 启动 HTTP 服务，`bootstrap.RunRpc()` 启动 gRPC 服务，`bootstrap.RunGateway()` 启动 Gateway 服务
-- **统一响应结构**：标准化的 `{"code":0,"msg":"ok","data":{}}` 格式
-- **统一错误码**：分层错误码体系，自动映射 HTTP 状态码
-- **统一中间件**：链路追踪、访问日志、恢复、限流、认证等
-- **Gateway 支持**：HTTP-to-HTTP 和 HTTP-to-gRPC 网关
-- **goctl 公司模板**：代码生成统一风格，一键生成规范代码
-
 ## 快速开始
 
-### 1. 安装 go-base CLI 工具
-
-**方式一：从远程仓库安装（推荐）**
+### 1. 安装 go-base CLI
 
 ```bash
+# 从远程仓库安装
 go install github.com/addls/go-base/cmd/go-base@latest
-```
 
-**方式二：本地开发安装**
-
-```bash
-# 克隆或进入 go-base 项目目录
+# 或本地开发安装
 cd go-base
-
-# 本地安装
 go install ./cmd/go-base
 
 # 验证安装
 go-base --version
 ```
 
-**升级 go-base CLI 工具**
+### 2. 初始化项目
 
 ```bash
-# 使用 upgrade 命令自动升级到当前主版本的最新小版本
-# 注意：如果在 Go 项目目录中运行，会自动升级项目中的 go-base 依赖
-go-base upgrade
-
-# 手动升级 CLI 工具到当前主版本的最新小版本（例如 v1.x.x）
-go install github.com/addls/go-base/cmd/go-base@v1
-
-# 手动升级项目依赖到当前主版本的最新小版本（在项目目录中运行）
-go get github.com/addls/go-base@v1
-go mod tidy
-
-# 如果需要升级到最新版本（可能跨主版本，不推荐）
-go install github.com/addls/go-base/cmd/go-base@latest
-go get github.com/addls/go-base@latest
+# 一键初始化标准业务项目（包含 gateway 和 services/ping）
+go-base init demo
 ```
 
-**升级说明**：
-- `go-base upgrade` 会同时升级：
-  1. **CLI 工具本身**：升级到**当前主版本号的最新小版本**
-     - 例如：如果当前是 `v1.0.0`，会升级到 `v1.x.x` 的最新版本（如 `v1.0.5` 或 `v1.1.0`）
-     - 不会跨主版本升级（如不会从 v1 升级到 v2）
-  2. **项目依赖**：升级到**相同主版本号的最新小版本**
-     - 如果在 Go 项目目录中运行，会自动升级 `github.com/addls/go-base` 依赖
-     - 确保 CLI 工具和项目依赖保持在同一主版本，避免兼容性问题
-- 如果当前目录不是 Go 项目或没有 go-base 依赖，只会升级 CLI 工具
-- **版本兼容性**：CLI 工具和项目依赖都升级到同一主版本，确保功能兼容
+**生成的项目结构**：
+```
+demo/
+├── go.mod
+├── gateway/              # Gateway 服务
+│   ├── etc/
+│   │   └── config.yaml
+│   ├── pb/              # proto descriptor 文件（自动生成）
+│   │   └── ping.pb
+│   └── main.go
+└── services/
+    └── ping/             # Ping RPC 服务
+        ├── ping.proto    # Proto 定义
+        ├── etc/
+        │   └── config.yaml
+        ├── pb/           # 生成的 proto 代码
+        └── ping.go
+```
 
-### 2. 安装公司级 goctl 模板（可选）
+**运行服务**：
+```bash
+# 1. 运行 RPC 服务
+cd demo/services/ping
+go run ping.go
 
-**注意**：如果使用 `go-base init` 命令，模板会自动安装，此步骤可跳过。
+# 2. 运行 Gateway 服务（在另一个终端）
+cd demo/gateway
+go run main.go
+```
 
-**手动安装方式**（如果需要单独安装模板）：
+## 关键操作指南
+
+### 创建 Proto 文件与生成代码
+
+#### 1. 创建新的 RPC 服务
 
 ```bash
-# 1. 初始化 goctl 模板目录（只需执行一次）
-goctl template init
+# 1. 进入项目根目录
+cd demo
 
-# 2. 查找 goctl 版本号（例如：1.8.5）
-goctl -v
+# 2. 创建服务目录
+mkdir -p services/user
+cd services/user
 
-# 3. 复制 API 模板到对应版本的模板目录
-# 注意：使用 /* 确保文件直接复制到 api 目录下，而不是多一层目录
-cp -r cmd/go-base/templates/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
+# 3. 生成 proto 模板文件
+goctl rpc -o user.proto
 
-# 4. 复制 RPC 模板到对应版本的模板目录
-cp -r cmd/go-base/templates/rpc/* ~/.goctl/$(goctl -v | awk '{print $3}')/rpc/
+# 4. 编辑 user.proto 定义服务接口
+# syntax = "proto3";
+# package user;
+# option go_package="./user";
+# 
+# message GetUserReq {
+#   int64 id = 1;
+# }
+# 
+# message GetUserResp {
+#   int64 id = 1;
+#   string name = 2;
+# }
+# 
+# service UserService {
+#   rpc GetUser(GetUserReq) returns(GetUserResp);
+# }
 
-# 或者手动指定版本号（如果上面命令不工作）
-# cp -r cmd/go-base/templates/api/* ~/.goctl/1.8.5/api/
-# cp -r cmd/go-base/templates/rpc/* ~/.goctl/1.8.5/rpc/
+# 5. 生成 RPC 服务代码
+goctl rpc protoc user.proto \
+  --go_out=./pb \
+  --go-grpc_out=./pb \
+  --zrpc_out=. \
+  --client=true \
+  --style=go_zero \
+  -m
+
+# 6. 重命名配置文件（如果生成了其他名称）
+mv etc/user.yaml etc/config.yaml 2>/dev/null || true
+
+# 7. 运行服务
+go run user.go
 ```
 
-**验证模板是否生效**：
+#### 2. 生成 Gateway 的 Proto Descriptor 文件（.pb）
+
+**重要**：Gateway 需要 `.pb` descriptor 文件来解析 gRPC 服务定义，不能直接使用 `.proto` 源文件。
+
+**自动生成**（推荐）：
+- 使用 `go-base init` 初始化项目时，会自动生成 `gateway/pb/ping.pb`
+- 如果后续添加了新服务，需要手动生成
+
+**手动生成**：
 
 ```bash
-# 检查 API 模板 main.tpl 是否包含 go-base 相关内容
-cat ~/.goctl/$(goctl -v | awk '{print $3}')/api/main.tpl | grep "github.com/addls/go-base"
-# 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
+# 在项目根目录执行
+cd demo
 
-# 检查 RPC 模板 main.tpl 是否包含 go-base 相关内容
-cat ~/.goctl/$(goctl -v | awk '{print $3}')/rpc/main.tpl | grep "github.com/addls/go-base"
-# 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
+# 生成 ping 服务的 descriptor 文件
+protoc --descriptor_set_out=gateway/pb/ping.pb \
+  --include_imports \
+  services/ping/ping.proto
+
+# 如果添加了新服务（如 user），也需要生成
+protoc --descriptor_set_out=gateway/pb/user.pb \
+  --include_imports \
+  services/user/user.proto
 ```
 
-**开发说明**：模板文件已集成到 `go-base` 命令中（使用 Go embed），位于：
-- `cmd/go-base/templates/api/` - HTTP/REST API 服务模板
-- `cmd/go-base/templates/rpc/` - gRPC 服务模板
+**参数说明**：
+- `--descriptor_set_out`：输出 descriptor 文件路径
+- `--include_imports`：包含所有导入的 proto 文件（重要！Gateway 需要完整依赖）
+- 最后一个参数：proto 源文件路径
 
-修改模板文件后，重新编译安装即可：
+### 配置 Gateway
 
-```bash
-go install ./cmd/go-base
+在 `gateway/etc/config.yaml` 中配置路由：
+
+**RPC 服务配置**：
+```yaml
+Upstreams:
+  - Grpc:
+      Target: localhost:8080  # gRPC 服务地址
+    ProtoSets:
+      - pb/ping.pb  # proto descriptor 文件路径（相对于 gateway 目录）
+    Mappings:
+      - Method: GET
+        Path: /ping
+        RpcPath: ping.Ping/Ping  # 格式：package.Service/Method
 ```
 
-### 3. 创建业务项目
+**RpcPath 格式说明**：
+- 格式：`package.Service/Method`
+- `package`：proto 文件中的 `package` 声明（如 `package ping;`）
+- `Service`：服务名称（如 `service Ping {`）
+- `Method`：RPC 方法名（如 `rpc Ping(...)`）
 
-**推荐方式**：使用 go-base CLI 工具（全自动初始化）
+**示例**：
+```protobuf
+package user;
+service UserService {
+  rpc GetUser(...) returns (...);
+}
+```
+对应的 RpcPath：`user.UserService/GetUser`
 
-```bash
-# 初始化 HTTP/REST API 服务（默认）
-go-base init demo_project
-# 或显式指定
-go-base init demo_project --type http
-
-# 初始化 gRPC 服务
-go-base init demo_project --type rpc
-
-# 使用短参数
-go-base init demo_project -t rpc
+**HTTP 服务配置**：
+```yaml
+Upstreams:
+  - Name: orderapi
+    Http:
+      Target: localhost:8888
+      Prefix: /api
+      Timeout: 3000
+    Mappings:
+      - Method: GET
+        Path: /order
 ```
 
-**init 命令会自动完成**：
-1. 检查并安装 goctl（如果未安装）
-2. 安装公司级 goctl 模板（API 和 RPC）
-3. 创建项目结构（使用 `goctl api new` 或 `goctl rpc new`）
-4. 将配置文件重命名为 `config.yaml`
-5. 执行 `go mod tidy`
-6. 清理未使用的导入
+## 统一启动方式
 
-**后续步骤**：
-
-**HTTP 服务**：
-```bash
-cd demo_project
-# 编写 .api 文件后生成代码
-goctl api go -api api/demo_project.api -dir . -style go_zero
-# 运行服务
-go run demo_project.go
-```
-
-**gRPC 服务**：
-```bash
-cd demo_project
-# 编写 .proto 文件后生成代码
-goctl rpc protoc proto/demo_project.proto --go_out=. --go-grpc_out=. --zrpc_out=.
-# 运行服务
-go run demo_project.go
-```
-
-**或者**：手动使用 goctl
-
-```bash
-# 使用 goctl 生成项目（会自动使用已安装的公司模板）
-goctl api new demo_project
-
-# 编写 .api 文件后生成代码
-goctl api go -api api/demo.api -dir . -style go_zero
-
-# 注意：goctl 生成的配置文件默认名称是 {project-name}-api.yaml
-# go-base 默认使用 etc/config.yaml，生成后需要重命名：
-mv etc/demo_project-api.yaml etc/config.yaml
-
-# 或者使用 -f 参数指定配置文件路径运行服务
-```
-
-### 4. 一句话启动
-
-统一使用 `bootstrap.RunHttp()` 入口：
+### HTTP 服务
 
 ```go
 package main
 
 import (
-	"github.com/zeromicro/go-zero/rest"
-	"github.com/addls/github.com/addls/go-base/pkg/bootstrap"
-	"demo-project/internal/config"
-	"demo-project/internal/handler"
-	"demo-project/internal/svc"
-)
-
-func main() {
-	// -f 指定配置文件（默认 etc/config.yaml）
-	bootstrap.RunHttp(bootstrap.WithHttpRoutes(func(server *rest.Server) {
-		// 业务配置结构体嵌入 bootstrap.HttpConfig，确保字段统一
-		ctx := svc.NewServiceContext(*bootstrap.MustLoadConfig[config.Config]())
-		handler.RegisterHandlers(server, ctx)
-	}))
-}
-```
-
-## 目录结构
-
-```
-go-base/
-├── go.mod
-├── README.md
-├── cmd/
-│   └── go-base/       # CLI 工具
-│       ├── main.go    # 命令入口
-│       └── templates/  # 模板文件（嵌入到命令中）
-│           ├── api/    # goctl HTTP/REST API 服务模板
-│           └── rpc/    # goctl gRPC 服务模板
-├── pkg/
-│   ├── bootstrap/     # 启动器（HTTP/gRPC/Gateway）
-│   │   ├── http.go    # HTTP 服务启动
-│   │   ├── rpc.go     # gRPC 服务启动
-│   │   ├── gateway.go # Gateway 服务启动
-│   │   └── context.go # 服务上下文
-│   ├── config/        # 配置工具（AppConfig, ConfigFile）
-│   ├── response/      # 统一响应
-│   ├── errcode/       # 统一错误码
-│   └── middleware/    # 统一中间件
-```
-
-## 模块说明
-
-### bootstrap - 启动器
-
-提供三种服务类型的统一启动入口，所有启动函数都通过 `-f` flag 统一控制配置文件路径（默认 `etc/config.yaml`）。
-
-**HTTP 服务启动**：
-
-```go
-import (
-    "github.com/zeromicro/go-zero/rest"
-    "github.com/addls/github.com/addls/go-base/pkg/bootstrap"
-    "github.com/addls/github.com/addls/go-base/pkg/config"
-    "demo-project/internal/config"
+    "github.com/addls/go-base/pkg/bootstrap"
     "demo-project/internal/handler"
     "demo-project/internal/svc"
 )
@@ -254,29 +202,30 @@ func main() {
 }
 ```
 
-**gRPC 服务启动**：
+### gRPC 服务
 
 ```go
+package main
+
 import (
-    "google.golang.org/grpc"
-    "github.com/addls/github.com/addls/go-base/pkg/bootstrap"
-    "demo-project/internal/config"
-    "demo-project/internal/svc"
+    "github.com/addls/go-base/pkg/bootstrap"
+    "demo-project/internal/server"
     pb "demo-project/pb"
-    server "demo-project/internal/server"
 )
 
 func main() {
     bootstrap.RunRpc(bootstrap.WithRpcService(func(grpcServer *grpc.Server) {
         ctx := svc.NewServiceContext(*bootstrap.MustLoadConfig[config.Config]())
-        pb.RegisterYourServiceServer(grpcServer, server.NewYourServiceServer(ctx))
+        pb.RegisterPingServer(grpcServer, server.NewPingServer(ctx))
     }))
 }
 ```
 
-**Gateway 服务启动**：
+### Gateway 服务
 
 ```go
+package main
+
 import "github.com/addls/go-base/pkg/bootstrap"
 
 func main() {
@@ -285,156 +234,40 @@ func main() {
 }
 ```
 
-**启动选项（HttpOption）**：
+## 配置说明
 
-```go
-// 添加 HTTP 中间件
-bootstrap.WithHttpMiddleware(middleware1, middleware2)
+所有服务统一使用 `-f` flag 指定配置文件（默认 `etc/config.yaml`）：
 
-// 注册 HTTP 路由
-bootstrap.WithHttpRoutes(func(server *rest.Server) { ... })
+```bash
+# 使用默认配置
+go run main.go
 
-// HTTP 启动前/后回调
-bootstrap.WithHttpBeforeStart(func(server *rest.Server) { ... })
-bootstrap.WithHttpAfterStart(func(server *rest.Server) { ... })
-```
-
-**启动选项（RpcOption）**：
-
-```go
-// 添加 gRPC 拦截器
-bootstrap.WithRpcInterceptor(interceptor1, interceptor2)
-
-// 注册 gRPC 服务
-bootstrap.WithRpcService(func(grpcServer *grpc.Server) { ... })
-
-// gRPC 启动前/后回调
-bootstrap.WithRpcBeforeStart(func(server *zrpc.RpcServer) { ... })
-bootstrap.WithRpcAfterStart(func(server *zrpc.RpcServer) { ... })
+# 指定配置文件
+go run main.go -f etc/config.prod.yaml
 ```
 
 **配置结构**：
-
 ```go
-// HTTP 服务配置（用于 Gateway 或纯 HTTP 服务）
+// HTTP 服务配置
 type Config struct {
-    bootstrap.HttpConfig  // 嵌入 bootstrap.HttpConfig（包含 rest.RestConf + App）
+    bootstrap.HttpConfig  // 嵌入 bootstrap.HttpConfig
     // 业务配置...
 }
 
-// gRPC 服务配置（用于 gRPC 服务）
+// gRPC 服务配置
 type Config struct {
-    bootstrap.RpcConfig  // 嵌入 bootstrap.RpcConfig（包含 zrpc.RpcServerConf + App）
+    bootstrap.RpcConfig  // 嵌入 bootstrap.RpcConfig
     // 业务配置...
 }
 
-// Gateway 服务配置（用于 Gateway）
+// Gateway 服务配置
 type Config struct {
-    bootstrap.GatewayConfig  // 嵌入 bootstrap.GatewayConfig（包含 gateway.GatewayConf + App）
-    // Gateway 通过 Upstreams 配置路由，通常不需要额外业务配置
+    bootstrap.GatewayConfig  // 嵌入 bootstrap.GatewayConfig
+    // Gateway 通过 Upstreams 配置路由
 }
 ```
 
-**Gateway 配置示例**：
-
-```yaml
-# etc/gateway.yaml
-Name: gateway
-Host: 0.0.0.0
-Port: 8888
-
-# 应用配置
-App:
-  Name: gateway
-  Version: 1.0.0
-  Env: dev
-
-# HTTP-to-gRPC Gateway
-Upstreams:
-  - Grpc:
-      Target: localhost:50051
-    ProtoSets:
-      - hello.pb
-    Mappings:
-      - Method: GET
-        Path: /ping
-        RpcPath: hello.Hello/Ping
-
-# HTTP-to-HTTP Gateway
-# Upstreams:
-#   - Name: userapi
-#     Http:
-#       Target: localhost:8080
-#       Prefix: /api
-#       Timeout: 3000
-#     Mappings:
-#       - Method: GET
-#         Path: /users
-```
-
-**Gateway 模式（推荐）**：
-
-go-zero 官方推荐使用 **Gateway 模式**（分离进程）：
-- **gRPC 服务**：运行独立的 gRPC 服务器（使用 `bootstrap.RunRpc()`）
-- **HTTP Gateway**：运行独立的 Gateway 服务（使用 `bootstrap.RunGateway()`），将 REST 请求转换为 gRPC 调用或转发到 HTTP 后端
-
-优势：
-- 关注点分离
-- 独立扩展（HTTP 和 gRPC 可分别扩展）
-- 独立部署和配置
-- 更好的容错性（一个服务崩溃不影响另一个）
-
-示例架构：
-```
-┌─────────────┐      HTTP/REST      ┌──────────────┐
-│   Client    │ ──────────────────> │ HTTP Gateway │
-└─────────────┘                      └──────────────┘
-                                            │
-                                            │ gRPC
-                                            ▼
-                                      ┌──────────────┐
-                                      │ gRPC Server  │
-                                      └──────────────┘
-```
-
-### config - 配置工具
-
-```go
-import "github.com/addls/github.com/addls/go-base/pkg/config"
-
-// 获取配置文件路径（由 -f flag 控制）
-config.ConfigFile() // 返回 "etc/config.yaml" 或命令行指定的路径
-
-// AppConfig 应用配置结构
-type AppConfig struct {
-    Name    string // 应用名称
-    Version string // 应用版本
-    Env     string // 环境：dev, test, prod
-}
-```
-
-### bootstrap - 配置加载
-
-```go
-import "github.com/addls/go-base/pkg/bootstrap"
-
-// 加载任意配置结构体（从统一配置文件）
-cfg := bootstrap.MustLoadConfig[YourConfig]()
-```
-
-### response - 统一响应
-
-**响应结构**：
-```json
-{
-  "code": 0,           // 业务错误码，0 表示成功
-  "msg": "success",    // 消息
-  "data": {},          // 数据（可选）
-  "traceId": "xxx"     // 追踪ID（可选）
-}
-```
-
-**使用方式**：
+## 统一响应格式
 
 ```go
 import "github.com/addls/go-base/pkg/response"
@@ -442,143 +275,66 @@ import "github.com/addls/go-base/pkg/response"
 // 成功响应
 response.Ok(w)                                    // 无数据
 response.OkWithData(w, data)                     // 带数据
-response.OkWithPage(w, list, total, page, pageSize) // 分页数据
-response.OkWithMsg(w, "操作成功")                 // 自定义消息
+response.HandleResult(w, resp, err)              // 自动处理结果
 
 // 错误响应
-response.Error(w, err)                            // 自动识别 errcode.Error 或普通 error
-response.ErrorInvalidParam(w, err)                // 参数错误（用于参数解析失败）
-response.ErrorWithMsg(w, errcode.ErrNotFound, "用户不存在") // 指定错误码和消息
-response.ErrorWithCode(w, 20001, "自定义错误")    // 直接指定错误码和消息
-
-// 统一处理（推荐）
-response.HandleResult(w, resp, err)               // 自动判断 err，成功返回数据，失败返回错误
-response.HandleResultWithPage(w, list, total, page, pageSize, err) // 分页结果处理
+response.Error(w, err)                           // 自动识别错误码
+response.ErrorWithCode(w, 20001, "自定义错误")    // 指定错误码
 ```
 
-**Handler 中的使用**（模板已自动生成）：
-
-```go
-func UserHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.UserRequest
-		// 参数解析失败自动转换为 errcode.ErrInvalidParam
-		if err := httpx.Parse(r, &req); err != nil {
-			response.ErrorInvalidParam(w, err)
-			return
-		}
-
-		l := logic.NewUserLogic(r.Context(), svcCtx)
-		resp, err := l.GetUser(&req)
-		// 自动处理：err != nil 返回错误，否则返回数据
-		response.HandleResult(w, resp, err)
-	}
+**响应格式**：
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {},
+  "traceId": "xxx"
 }
 ```
 
-### errcode - 错误码
-
-**错误码规范**：
-- `1xxxx`: 系统级错误
-- `2xxxx`: 通用业务错误
-- `3xxxx`: 具体业务错误（业务系统自定义）
-
-**使用方式**：
+## 错误码
 
 ```go
 import "github.com/addls/go-base/pkg/errcode"
 
 // 预定义错误码
-errcode.OK                    // 0 - 成功
-errcode.ErrInternal           // 10001 - 服务内部错误
 errcode.ErrInvalidParam       // 20001 - 参数错误
 errcode.ErrNotFound           // 20002 - 资源不存在
 errcode.ErrUnauthorized       // 20004 - 未授权
-errcode.ErrForbidden          // 20005 - 禁止访问
-errcode.ErrTokenInvalid       // 21001 - Token 无效
-errcode.ErrDatabaseOperation  // 22001 - 数据库操作失败
 
-// 在 Logic 层返回错误
-func (l *UserLogic) GetUser(req *types.UserRequest) (*types.UserResponse, error) {
-	user, err := l.svcCtx.UserModel.FindOne(l.ctx, req.ID)
-	if err != nil {
-		// 方式1：使用预定义错误码
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errcode.ErrUserNotFound  // 业务自定义错误码
-		}
-		return nil, errcode.ErrDatabaseOperation.WithMsg(err.Error())
-	}
-	
-	// 方式2：自定义业务错误码（在业务项目的 errcode 包中定义）
-	if user.Status == 0 {
-		return nil, errcode.ErrUserDisabled
-	}
-	
-	return &types.UserResponse{User: user}, nil
-}
-
-// 方式3：创建自定义错误码（在业务项目中）
-// 在 internal/errcode/codes.go 中：
-package errcode
-
-import "github.com/addls/go-base/pkg/errcode"
-
-var (
-	ErrUserNotFound = errcode.New(30101, "用户不存在")
-	ErrUserDisabled = errcode.New(30104, "用户已禁用")
-)
-
-// 方式4：带自定义消息
-err := errcode.ErrInvalidParam.WithMsg("name 字段不能为空")
+// 自定义业务错误码
+var ErrUserNotFound = errcode.New(30101, "用户不存在")
 ```
 
-**错误码自动映射 HTTP 状态码**：
-- `errcode.Error` 结构包含 `HTTPCode` 字段
-- `response.Error()` 会自动使用正确的 HTTP 状态码
-- 业务错误码默认返回 `200 OK`，系统错误码返回对应 HTTP 状态码
+## 常见问题
 
-## goctl 模板使用
+### 1. Gateway 报错 "server does not support the reflection API"
 
-### 安装模板
+**原因**：Gateway 需要 proto descriptor 文件（`.pb`），而不是 proto 源文件（`.proto`）
 
+**解决**：
 ```bash
-# 1. 初始化 goctl 模板目录（只需执行一次）
-goctl template init
-
-# 2. 查找 goctl 版本号（例如：1.8.5）
-goctl -v
-
-# 3. 复制 API 模板到对应版本的模板目录
-cp -r cmd/go-base/templates/api/* ~/.goctl/$(goctl -v | awk '{print $3}')/api/
-
-# 4. 复制 RPC 模板到对应版本的模板目录
-cp -r cmd/go-base/templates/rpc/* ~/.goctl/$(goctl -v | awk '{print $3}')/rpc/
-
-# 或者手动指定版本号
-# cp -r cmd/go-base/templates/api/* ~/.goctl/1.8.5/api/
-# cp -r cmd/go-base/templates/rpc/* ~/.goctl/1.8.5/rpc/
+# 生成 descriptor 文件
+protoc --descriptor_set_out=gateway/pb/ping.pb \
+  --include_imports \
+  services/ping/ping.proto
 ```
 
-### 生成代码
+### 2. RpcPath 如何确定？
 
-```bash
-# 生成 API 服务
-goctl api go -api api/user.api -dir . -style go_zero
+查看 proto 文件：
+- `package ping;` → package 名是 `ping`
+- `service Ping {` → 服务名是 `Ping`
+- `rpc Ping(...)` → 方法名是 `Ping`
 
-# 生成 gRPC 服务
-goctl rpc protoc user.proto --go_out=. --go-grpc_out=. --zrpc_out=.
-```
+RpcPath = `ping.Ping/Ping`（格式：`package.Service/Method`）
 
-**验证模板是否生效**：
+### 3. ProtoSets 路径问题
 
-```bash
-# 检查 API 模板 main.tpl 是否包含 go-base 相关内容
-cat ~/.goctl/$(goctl -v | awk '{print $3}')/api/main.tpl | grep "go-base"
-# 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
-
-# 检查 RPC 模板 main.tpl 是否包含 go-base 相关内容
-cat ~/.goctl/$(goctl -v | awk '{print $3}')/rpc/main.tpl | grep "go-base"
-# 应该看到：import "github.com/addls/go-base/pkg/bootstrap"
+`ProtoSets` 中的路径是相对于 `gateway` 目录的：
+```yaml
+ProtoSets:
+  - pb/ping.pb  # 相对于 gateway 目录
 ```
 
 ## License
