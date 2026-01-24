@@ -97,6 +97,14 @@ Middlewares:
   # Gunzip middleware
   Gunzip: true
 
+# ==================== Auth configuration ====================
+# JWT auth configuration
+Auth:
+  # JWT signing secret
+  AccessSecret: your-jwt-secret
+  # Token expiration time in seconds
+  AccessExpire: 3600
+
 # ==================== Signature configuration (SignatureConf) ====================
 # Signature verification config (optional)
 # Signature:

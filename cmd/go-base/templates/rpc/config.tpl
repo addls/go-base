@@ -6,19 +6,4 @@ import (
 
 type Config struct {
 	bootstrap.RpcConfig
-	
-	// Add business configuration.
-	// Database DatabaseConfig `json:",optional"`
-	// Redis    RedisConfig    `json:",optional"`
 }
-
-// DatabaseConfig database configuration.
-// type DatabaseConfig struct {
-// 	DataSource string
-// }
-
-// RedisConfig Redis configuration.
-// type RedisConfig struct {
-// 	Host string
-// 	Pass string `json:",optional"`
-// }

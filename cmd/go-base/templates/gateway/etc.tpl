@@ -70,15 +70,16 @@ Middlewares:
   # Gunzip middleware
   Gunzip: true
 
-# ==================== JWT configuration (go-base extension, optional) ====================
+# ==================== Auth configuration ====================
 # JWT auth configuration (when enabled, Gateway verifies JWT before forwarding requests)
 # After successful verification, Gateway passes user info through to backend gRPC
 # (via grpc-gateway convention using the "Grpc-Metadata-" prefix headers):
 # - Grpc-Metadata-x-jwt-user-id
 # - Grpc-Metadata-x-jwt-user-name
-# Jwt:
-#   Secret: your-jwt-secret-key  # JWT secret (required)
-#   SkipPaths:                    # Paths that skip JWT verification (optional)
+# Auth:
+#   AccessSecret: your-jwt-secret  # JWT signing secret (required)
+#   AccessExpire: 3600             # Token expiration time in seconds (optional)
+#   SkipPaths:                      # Paths that skip JWT verification (optional)
 #     - /ping
 #     - /health
 
@@ -108,7 +109,7 @@ Upstreams:
         RpcPath: ping.Ping/Ping
         # JWT config (optional; if global JWT is enabled, this documents how to skip per route)
         # Note: go-zero RouteMapping does not support custom fields; this is documentation only.
-        # Actual control is via the global Jwt.SkipPaths config.
+        # Actual control is via the global Auth.SkipPaths config.
   
   # HTTP-to-HTTP Gateway example
   # - Name: userapi

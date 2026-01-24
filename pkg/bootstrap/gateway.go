@@ -15,10 +15,11 @@ import (
 type GatewayConfig struct {
 	gateway.GatewayConf
 
-	// JWT configuration (optional).
-	Jwt struct {
-		Secret    string   `json:",optional"` // JWT secret
-		SkipPaths []string `json:",optional"` // Paths that skip JWT verification
+	// Auth configuration (optional).
+	Auth struct {
+		AccessSecret string   `json:",optional"` // JWT signing secret
+		AccessExpire int64    `json:",optional"` // Token expiration time in seconds (kept for consistency with API config)
+		SkipPaths    []string `json:",optional"` // Paths that skip JWT verification
 	} `json:",optional"`
 
 	// Application configuration.
@@ -83,11 +84,11 @@ func RunGateway(opts ...GatewayOption) {
 	defer gw.Stop()
 
 	// Register middlewares (similar to http.go).
-	// If JWT is configured, add the JWT middleware.
-	if c.Jwt.Secret != "" {
-		jwtMw := middleware.RegisterJwtMiddleware(c.Jwt.Secret, c.Jwt.SkipPaths)
+	// If auth is configured, add the JWT middleware.
+	if c.Auth.AccessSecret != "" {
+		jwtMw := middleware.RegisterJwtMiddleware(c.Auth.AccessSecret, c.Auth.SkipPaths)
 		gw.Server.Use(jwtMw)
-		logx.Infof("JWT middleware configured with secret (length: %d), skip paths: %v", len(c.Jwt.Secret), c.Jwt.SkipPaths)
+		logx.Infof("JWT middleware configured with secret (length: %d), skip paths: %v", len(c.Auth.AccessSecret), c.Auth.SkipPaths)
 	}
 	
 	// Add unified response format middleware.

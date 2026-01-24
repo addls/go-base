@@ -183,13 +183,14 @@ Upstreams:
 
 ### Gateway JWT 鉴权与用户信息透传（HTTP -> gRPC）
 
-在 `gateway/etc/config.yaml` 中开启 `Jwt` 配置后，Gateway 会在转发前做 JWT 校验；校验通过后，会把用户信息透传给后端 gRPC 服务。
+在 `gateway/etc/config.yaml` 中开启 `Auth` 配置后，Gateway 会在转发前做 JWT 校验；校验通过后，会把用户信息透传给后端 gRPC 服务。
 
 **1) 开启 JWT**
 
 ```yaml
-Jwt:
-  Secret: a-string-secret-at-least-256-bits-long
+Auth:
+  AccessSecret: a-string-secret-at-least-256-bits-long
+  AccessExpire: 3600
   SkipPaths:
     - /health
     - /ping
