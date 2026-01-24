@@ -1,21 +1,21 @@
-// Package config 提供配置相关的公共功能
+// Package config provides shared utilities for configuration.
 package config
 
 import (
 	"flag"
 )
 
-// 统一配置文件 flag 定义，默认使用 go-zero 常见约定：etc/config.yaml
+// Unified config file flag definition, defaulting to the go-zero convention: etc/config.yaml.
 var configFile = flag.String("f", "etc/config.yaml", "the config file")
 
-// AppConfig 应用配置
+// AppConfig application configuration.
 type AppConfig struct {
 	Name    string `json:",default=app"`
 	Version string `json:",default=1.0.0"`
 	Env     string `json:",default=dev"` // dev, test, prod
 }
 
-// ConfigFile 返回当前配置文件路径（由命令行 -f 或默认值决定）
+// ConfigFile returns the current config file path (from -f flag or default).
 func ConfigFile() string {
 	return *configFile
 }

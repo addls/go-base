@@ -6,7 +6,7 @@ import (
 
 type ServiceContext struct {
 	Config *config.Config
-	// 添加业务依赖
+	// Add business dependencies.
 	// UserModel model.UserModel
 	// Redis     *redis.Redis
 }
@@ -14,6 +14,6 @@ type ServiceContext struct {
 func NewServiceContext(c *config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config: c,
-		// 初始化业务依赖
+		// Initialize business dependencies.
 	}
 }

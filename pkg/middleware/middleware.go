@@ -1,4 +1,4 @@
-// Package middleware 提供统一的 HTTP 中间件
+// Package middleware provides unified HTTP middlewares.
 package middleware
 
 import (
@@ -7,14 +7,14 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 )
 
-// RegisterGlobalMiddleware 注册全局中间件到 go-zero server
+// RegisterGlobalMiddleware registers global middlewares into the go-zero server.
 func RegisterGlobalMiddleware(server *rest.Server, middlewares ...rest.Middleware) {
 	for _, m := range middlewares {
 		server.Use(m)
 	}
 }
 
-// DefaultMiddlewares 默认中间件列表
+// DefaultMiddlewares returns the default middleware list.
 func DefaultMiddlewares() []rest.Middleware {
 	return []rest.Middleware{
 		RecoverMiddleware,
@@ -22,12 +22,12 @@ func DefaultMiddlewares() []rest.Middleware {
 	}
 }
 
-// RecoverMiddleware 恢复中间件
+// RecoverMiddleware is a panic recovery middleware.
 func RecoverMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return Recover()(next)
 }
 
-// CorsMiddleware CORS 中间件
+// CorsMiddleware is a CORS middleware.
 func CorsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return Cors()(next)
 }

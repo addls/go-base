@@ -17,12 +17,12 @@
 # Go workspace file
 go.work
 
-# ==================== 项目特定 ====================
-# go-base CLI 工具编译产物
+# ==================== Project-specific ====================
+# go-base CLI build artifacts
 /go-base
 cmd/go-base/go-base
 
-# ==================== IDE 配置 ====================
+# ==================== IDE configuration ====================
 # VSCode
 .vscode/
 *.code-workspace
@@ -41,7 +41,7 @@ cmd/go-base/go-base
 \#*\#
 .\#*
 
-# ==================== 操作系统 ====================
+# ==================== Operating systems ====================
 # macOS
 .DS_Store
 .AppleDouble
@@ -73,12 +73,12 @@ $RECYCLE.BIN/
 .Trash-*
 .nfs*
 
-# ==================== 日志文件 ====================
+# ==================== Log files ====================
 *.log
 logs/
 *.log.*
 
-# ==================== 临时文件 ====================
+# ==================== Temporary files ====================
 *.tmp
 *.temp
 *.bak
@@ -86,28 +86,28 @@ logs/
 *.swp
 *.swo
 
-# ==================== 配置文件（包含敏感信息） ====================
-# 注意：如果配置文件包含敏感信息，应该添加到 .gitignore
-# 示例：
+# ==================== Config files (sensitive) ====================
+# Note: if config files contain sensitive data, add them to .gitignore
+# Examples:
 # config.local.yaml
 # .env
 # .env.local
 
-# ==================== 构建产物 ====================
+# ==================== Build outputs ====================
 dist/
 build/
 bin/
 out/
 
-# ==================== 测试相关 ====================
-# 测试覆盖率报告
+# ==================== Testing ====================
+# Coverage reports
 coverage.html
 coverage.xml
 coverage.out
 *.coverprofile
 
-# ==================== 其他 ====================
-# 临时目录
+# ==================== Others ====================
+# Temp directories
 tmp/
 temp/
 .tmp/

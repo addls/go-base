@@ -11,7 +11,7 @@ import (
 	"github.com/addls/go-base/pkg/response"
 )
 
-// responseWrapper 拦截响应，用于统一格式转换
+// responseWrapper intercepts responses for unified format conversion.
 type responseWrapper struct {
 	http.ResponseWriter
 	statusCode int
@@ -39,44 +39,44 @@ func (w *responseWrapper) Write(b []byte) (int, error) {
 		w.statusCode = http.StatusOK
 		w.written = true
 	}
-	// 写入缓冲区，不直接写到下游
+	// Write to buffer instead of writing to downstream directly.
 	return w.body.Write(b)
 }
 
-// ResponseMiddleware 统一响应格式中间件
-// 将 RPC 返回的业务数据包装成统一的 response.Response 格式
+// ResponseMiddleware is a unified response format middleware.
+// It wraps backend responses into the unified response.Response format.
 func ResponseMiddleware() rest.Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			rw := newResponseWrapper(w)
 
-			// 执行下游 handler（转发到后端服务）
+			// Execute downstream handler (forward to backend service).
 			next(rw, r)
 
-			// 读取原始响应
+			// Read original response.
 			rawBody := rw.body.Bytes()
 			status := rw.statusCode
 
-			// 如果原始响应为空，返回统一的空成功响应
+			// If the original response is empty, return a unified empty success response.
 			if len(rawBody) == 0 {
 				response.Ok(w)
 				return
 			}
 
-			// 检查是否已经是统一格式（包含 code 字段）
+			// Check whether it's already in unified format (contains the "code" field).
 			var maybeUnified struct {
 				Code int `json:"code"`
 			}
 			if err := json.Unmarshal(rawBody, &maybeUnified); err == nil {
-				// 如果已经有 code 字段，说明已经是统一格式，直接透传
+				// If it already has the code field, treat it as unified format and pass through.
 				if maybeUnified.Code != 0 || len(rawBody) > 0 {
-					// 检查是否包含 msg 字段（更严格的判断）
+					// Check whether it contains the msg field (a stricter check).
 					var checkMsg struct {
 						Code int    `json:"code"`
 						Msg  string `json:"msg"`
 					}
 					if err := json.Unmarshal(rawBody, &checkMsg); err == nil && checkMsg.Msg != "" {
-						// 已经是统一格式，直接透传
+						// Already unified format; pass through directly.
 						w.WriteHeader(status)
 						_, _ = w.Write(rawBody)
 						return
@@ -84,15 +84,15 @@ func ResponseMiddleware() rest.Middleware {
 				}
 			}
 
-			// 根据状态码判断成功/失败
+			// Determine success/failure by HTTP status code.
 			if status >= http.StatusBadRequest {
-				// 错误响应：尝试解析错误信息
+				// Error response: try to parse error information.
 				var errData interface{}
 				if err := json.Unmarshal(rawBody, &errData); err != nil {
 					errData = string(rawBody)
 				}
 
-				// 尝试提取错误消息
+				// Try to extract an error message.
 				msg := http.StatusText(status)
 				if m, ok := errData.(map[string]interface{}); ok {
 					if emsg, ok := m["message"].(string); ok && emsg != "" {
@@ -102,7 +102,7 @@ func ResponseMiddleware() rest.Middleware {
 					}
 				}
 
-				// 根据 HTTP 状态码映射到业务错误码
+				// Map HTTP status code to business error code.
 				var code int
 				switch status {
 				case http.StatusBadRequest:
@@ -123,14 +123,14 @@ func ResponseMiddleware() rest.Middleware {
 				return
 			}
 
-			// 成功响应：将原始数据包装到 data 字段
+			// Success response: wrap the original payload into the data field.
 			var data interface{}
 			if err := json.Unmarshal(rawBody, &data); err != nil {
-				// 如果不是 JSON，作为字符串返回
+				// If it's not JSON, return it as a string.
 				data = string(rawBody)
 			}
 
-			// 返回统一格式的成功响应
+			// Return unified success response.
 			response.OkWithData(w, data)
 		}
 	}

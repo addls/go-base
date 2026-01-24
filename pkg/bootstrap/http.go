@@ -11,72 +11,72 @@ import (
 	"github.com/addls/go-base/pkg/middleware"
 )
 
-// HttpConfig HTTP 服务基础配置（嵌入 rest.RestConf）
+// HttpConfig base configuration for the HTTP service (embeds rest.RestConf).
 type HttpConfig struct {
 	rest.RestConf
 
-	// 应用配置
+	// Application configuration.
 	App config.AppConfig `json:",optional"`
 }
 
-// RouteRegister HTTP 路由注册函数
+// RouteRegister registers HTTP routes.
 type RouteRegister func(server *rest.Server)
 
-// HttpOption HTTP 启动选项
+// HttpOption options for starting the HTTP server.
 type HttpOption func(*httpOptions)
 
 type httpOptions struct {
-	config        *HttpConfig // 可选：如果提供则直接使用，否则从文件加载
+	config        *HttpConfig // Optional: if provided use directly; otherwise load from file.
 	middlewares   []rest.Middleware
 	routeRegister RouteRegister
 	beforeStart   func(*rest.Server)
 	afterStart    func(*rest.Server)
 }
 
-// WithHttpConfig 直接提供 HTTP 配置（可选，如果不提供则从文件加载）
+// WithHttpConfig provides the HTTP config directly (optional; if nil, it will be loaded from file).
 func WithHttpConfig(c *HttpConfig) HttpOption {
 	return func(o *httpOptions) {
 		o.config = c
 	}
 }
 
-// WithHttpMiddleware 添加 HTTP 中间件
+// WithHttpMiddleware adds HTTP middlewares.
 func WithHttpMiddleware(m ...rest.Middleware) HttpOption {
 	return func(o *httpOptions) {
 		o.middlewares = append(o.middlewares, m...)
 	}
 }
 
-// WithHttpRoutes 注册 HTTP 路由
+// WithHttpRoutes registers HTTP routes.
 func WithHttpRoutes(register RouteRegister) HttpOption {
 	return func(o *httpOptions) {
 		o.routeRegister = register
 	}
 }
 
-// WithHttpBeforeStart HTTP 启动前回调
+// WithHttpBeforeStart callback before the HTTP server starts.
 func WithHttpBeforeStart(fn func(*rest.Server)) HttpOption {
 	return func(o *httpOptions) {
 		o.beforeStart = fn
 	}
 }
 
-// WithHttpAfterStart HTTP 启动后回调
+// WithHttpAfterStart callback after the HTTP server starts.
 func WithHttpAfterStart(fn func(*rest.Server)) HttpOption {
 	return func(o *httpOptions) {
 		o.afterStart = fn
 	}
 }
 
-// RunHttp 启动 HTTP 服务
-// 统一入口：
-//   - 配置文件路径通过命令行 flag -f 控制（默认 etc/config.yaml）
-//   - 其它行为通过 HttpOption 扩展（路由、中间件、回调等）
+// RunHttp starts the HTTP service.
+// Unified entry:
+//   - Config file path is controlled by the command-line flag -f (default: etc/config.yaml)
+//   - Other behaviors can be extended via HttpOption (routes, middlewares, callbacks, etc.)
 func RunHttp(opts ...HttpOption) {
-	// 解析命令行参数，获取配置文件路径
+	// Parse command-line flags and get the config file path.
 	flag.Parse()
 
-	// 应用选项
+	// Apply options.
 	o := &httpOptions{
 		middlewares: middleware.DefaultMiddlewares(),
 	}
@@ -84,7 +84,7 @@ func RunHttp(opts ...HttpOption) {
 		opt(o)
 	}
 
-	// 加载基础配置：如果 opts 中提供了配置则直接使用，否则从文件加载
+	// Load base config: use the provided config if present; otherwise load from file.
 	var c HttpConfig
 	if o.config != nil {
 		c = *o.config
@@ -92,26 +92,26 @@ func RunHttp(opts ...HttpOption) {
 		conf.MustLoad(config.ConfigFile(), &c)
 	}
 
-	// 创建服务器
+	// Create server.
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
 
-	// 注册中间件
+	// Register middlewares.
 	for _, m := range o.middlewares {
 		server.Use(m)
 	}
 
-	// 启动前回调
+	// Before-start callback.
 	if o.beforeStart != nil {
 		o.beforeStart(server)
 	}
 
-	// 注册路由
+	// Register routes.
 	if o.routeRegister != nil {
 		o.routeRegister(server)
 	}
 
-	// 打印启动信息
+	// Log startup information.
 	logx.Infof("Starting %s %s on %s:%d [%s]",
 		c.App.Name,
 		c.App.Version,
@@ -120,11 +120,11 @@ func RunHttp(opts ...HttpOption) {
 		c.App.Env,
 	)
 
-	// 启动后回调
+	// After-start callback.
 	if o.afterStart != nil {
 		o.afterStart(server)
 	}
 
-	// 启动服务
+	// Start serving.
 	server.Start()
 }

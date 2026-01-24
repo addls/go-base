@@ -1,149 +1,149 @@
-# {{.serviceName}} 配置文件
+# {{.serviceName}} config file
 
-# ==================== 基础服务配置 (ServiceConf) ====================
-# 服务名称，会出现在日志和追踪中
+# ==================== Base service configuration (ServiceConf) ====================
+# Service name, appears in logs and tracing
 Name: {{.serviceName}}
 
-# 服务运行模式: dev(开发), test(测试), rt(压测), pre(预发布), pro(生产)
-# 默认值: pro
+# Service mode: dev (development), test (testing), rt (load test), pre (pre-release), pro (production)
+# Default: pro
 Mode: dev
 
-# 指标上报 URL（可选，为空则禁用指标上报）
+# Metrics push URL (optional; empty disables metrics push)
 # MetricsUrl: http://localhost:9091/metrics
 
-# ==================== HTTP 服务配置 (RestConf) ====================
-# 监听地址，默认 0.0.0.0
+# ==================== HTTP service configuration (RestConf) ====================
+# Listen host, default 0.0.0.0
 Host: {{.host}}
 
-# 监听端口（必需）
+# Listen port (required)
 Port: {{.port}}
 
-# HTTPS 证书配置（可选，启用 HTTPS 时需要）
+# HTTPS certificate config (optional; required when enabling HTTPS)
 # CertFile: /path/to/cert.pem
 # KeyFile: /path/to/key.pem
 
-# 是否打印详细日志（可选）
+# Verbose logging (optional)
 # Verbose: false
 
-# 最大并发连接数，默认 10000
+# Maximum concurrent connections, default 10000
 # MaxConns: 10000
 
-# 最大请求体大小（字节），默认 1048576 (1MB)
+# Maximum request body size (bytes), default 1048576 (1MB)
 # MaxBytes: 1048576
 
-# 请求超时时间（毫秒），默认 3000 (3秒)
+# Request timeout (milliseconds), default 3000 (3 seconds)
 # Timeout: 3000
 
-# CPU 阈值（0-1000），默认 900 (90%)，超过此阈值会触发限流
+# CPU threshold (0-1000), default 900 (90%); exceeding triggers shedding
 # CpuThreshold: 900
 
-# ==================== 日志配置 (LogConf) ====================
+# ==================== Logging configuration (LogConf) ====================
 Log:
-  # 日志模式: console(控制台), file(文件), volume(容器卷)
+  # Log mode: console, file, volume
   Mode: console
   
-  # 日志格式: json(JSON格式，默认), plain(文本格式)
-  # 默认值: json
+  # Log encoding: json (default), plain
+  # Default: json
   # Encoding: json
   
-  # 日志级别: debug, info, warn, error
+  # Log level: debug, info, warn, error
   Level: info
   
-  # 日志文件路径（file 或 volume 模式时需要）
+  # Log file path (required for file/volume mode)
   # Path: logs
   
-  # 是否压缩日志文件（可选）
+  # Compress log files (optional)
   # Compress: true
   
-  # 日志保留天数（可选）
+  # Log retention days (optional)
   # KeepDays: 7
   
-  # 堆栈冷却时间（毫秒），用于避免频繁打印堆栈（可选）
+  # Stack cooldown (milliseconds) to avoid frequent stack printing (optional)
   # StackCooldownMillis: 100
 
-# ==================== 中间件配置 (MiddlewaresConf) ====================
-# 所有中间件默认启用，设置为 false 可禁用
+# ==================== Middleware configuration (MiddlewaresConf) ====================
+# All middlewares are enabled by default; set to false to disable
 Middlewares:
-  # 链路追踪中间件
+  # Tracing middleware
   Trace: true
   
-  # 访问日志中间件
+  # Access log middleware
   Log: true
   
-  # Prometheus 指标中间件
+  # Prometheus metrics middleware
   Prometheus: true
   
-  # 最大连接数限制中间件
+  # Max connections limiting middleware
   MaxConns: true
   
-  # 熔断器中间件
+  # Circuit breaker middleware
   Breaker: true
   
-  # 限流中间件（基于 CPU 阈值）
+  # Shedding middleware (based on CPU threshold)
   Shedding: true
   
-  # 超时控制中间件
+  # Timeout middleware
   Timeout: true
   
-  # 异常恢复中间件
+  # Recovery middleware
   Recover: true
   
-  # 指标收集中间件
+  # Metrics collection middleware
   Metrics: true
   
-  # 请求体大小限制中间件
+  # Request body size limiting middleware
   MaxBytes: true
   
-  # Gzip 解压缩中间件
+  # Gunzip middleware
   Gunzip: true
 
-# ==================== 签名配置 (SignatureConf) ====================
-# 签名验证配置（可选）
+# ==================== Signature configuration (SignatureConf) ====================
+# Signature verification config (optional)
 # Signature:
-#   Strict: false  # 是否严格模式
-#   Expiry: 3600   # 签名过期时间（秒）
+#   Strict: false  # Strict mode
+#   Expiry: 3600   # Signature expiry (seconds)
 
-# ==================== Prometheus 配置 ====================
-# Prometheus 监控配置（v1.4.3+ 已废弃，建议使用 MetricsUrl）
+# ==================== Prometheus configuration ====================
+# Prometheus monitoring config (deprecated since v1.4.3+; prefer MetricsUrl)
 # Prometheus:
 #   Host: 0.0.0.0
 #   Port: 9091
 #   Path: /metrics
 
-# ==================== 分布式追踪配置 (Telemetry) ====================
-# OpenTelemetry 追踪配置（可选）
+# ==================== Distributed tracing (Telemetry) ====================
+# OpenTelemetry tracing config (optional)
 # Telemetry:
-#   Name: {{.serviceName}}           # 服务名称
-#   Endpoint: http://localhost:4317  # 追踪数据上报地址
-#   Sampler: 1.0                      # 采样率 (0.0-1.0)，默认 1.0
-#   Batcher: otlpgrpc                 # 导出格式: zipkin, otlpgrpc, otlphttp, file
-#   OtlpHeaders:                      # OTLP 自定义请求头
+#   Name: {{.serviceName}}           # Service name
+#   Endpoint: http://localhost:4317  # Trace exporter endpoint
+#   Sampler: 1.0                      # Sampling rate (0.0-1.0), default 1.0
+#   Batcher: otlpgrpc                 # Exporter: zipkin, otlpgrpc, otlphttp, file
+#   OtlpHeaders:                      # Custom OTLP headers
 #     key: value
-#   OtlpHttpPath: /v1/traces          # OTLP HTTP 路径
-#   OtlpHttpSecure: false             # OTLP HTTP 是否启用 TLS
-#   Disabled: false                   # 是否禁用追踪
+#   OtlpHttpPath: /v1/traces          # OTLP HTTP path
+#   OtlpHttpSecure: false             # Enable TLS for OTLP HTTP
+#   Disabled: false                   # Disable tracing
 
-# ==================== 开发服务器配置 (DevServer) ====================
-# 开发服务器配置（v1.4.3+，可选）
+# ==================== Dev server (DevServer) ====================
+# Dev server config (v1.4.3+, optional)
 # DevServer:
-#   Port: 8848  # 开发服务器端口
+#   Port: 8848  # Dev server port
 
-# ==================== 应用配置 (go-base 扩展) ====================
-# 应用配置
+# ==================== Application configuration (go-base extension) ====================
+# Application configuration
 App:
   Name: {{.serviceName}}
   Version: 1.0.0
   Env: dev  # dev, test, prod
 
-# ==================== 业务配置 ====================
-# 数据库配置示例
+# ==================== Business configuration ====================
+# Database configuration example
 # Database:
 #   DataSource: "root:password@tcp(localhost:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
 #   MaxOpenConns: 100
 #   MaxIdleConns: 10
 #   ConnMaxLifetime: 3600
 
-# Redis 配置示例
+# Redis configuration example
 # Redis:
 #   Host: localhost:6379
 #   Pass: ""
@@ -151,6 +151,6 @@ App:
 #   PoolSize: 10
 #   MinIdleConns: 5
 
-# 其他业务配置...
+# Other business configuration...
 # Custom:
 #   Key: value

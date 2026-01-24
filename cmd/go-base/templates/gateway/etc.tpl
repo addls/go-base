@@ -1,121 +1,122 @@
-# Gateway 配置文件
+# Gateway config file
 
-# ==================== Gateway 基础配置 ====================
-# Gateway 名称
+# ==================== Gateway base configuration ====================
+# Gateway name
 Name: Gateway
 
-# Gateway 监听地址
+# Gateway listen host
 Host: 0.0.0.0
 
-# Gateway 监听端口
+# Gateway listen port
 Port: 8888
 
-# ==================== 日志配置 (LogConf) ====================
+# ==================== Logging configuration (LogConf) ====================
 Log:
-  # 日志模式: console(控制台), file(文件), volume(容器卷)
+  # Log mode: console, file, volume
   Mode: console
   
-  # 日志格式: json(JSON格式，默认), plain(文本格式)
-  # 默认值: json
+  # Log encoding: json (default), plain
+  # Default: json
   # Encoding: json
   
-  # 日志级别: debug, info, warn, error
+  # Log level: debug, info, warn, error
   Level: info
   
-  # 日志文件路径（file 或 volume 模式时需要）
+  # Log file path (required for file/volume mode)
   # Path: logs
   
-  # 是否压缩日志文件（可选）
+  # Compress log files (optional)
   # Compress: true
   
-  # 日志保留天数（可选）
+  # Log retention days (optional)
   # KeepDays: 7
   
-  # 堆栈冷却时间（毫秒），用于避免频繁打印堆栈（可选）
+  # Stack cooldown (milliseconds) to avoid frequent stack printing (optional)
   # StackCooldownMillis: 100
 
-# ==================== 中间件配置 (MiddlewaresConf) ====================
-# 所有中间件默认启用，设置为 false 可禁用
+# ==================== Middleware configuration (MiddlewaresConf) ====================
+# All middlewares are enabled by default; set to false to disable
 Middlewares:
-  # 链路追踪中间件
+  # Tracing middleware
   Trace: true
   
-  # 访问日志中间件
+  # Access log middleware
   Log: true
   
-  # Prometheus 指标中间件
+  # Prometheus metrics middleware
   Prometheus: true
   
-  # 最大连接数限制中间件
+  # Max connections limiting middleware
   MaxConns: true
   
-  # 熔断器中间件
+  # Circuit breaker middleware
   Breaker: true
   
-  # 限流中间件（基于 CPU 阈值）
+  # Shedding middleware (based on CPU threshold)
   Shedding: true
   
-  # 超时控制中间件
+  # Timeout middleware
   Timeout: true
   
-  # 异常恢复中间件
+  # Recovery middleware
   Recover: true
   
-  # 指标收集中间件
+  # Metrics collection middleware
   Metrics: true
   
-  # 请求体大小限制中间件
+  # Request body size limiting middleware
   MaxBytes: true
   
-  # Gzip 解压缩中间件
+  # Gunzip middleware
   Gunzip: true
 
-# ==================== JWT 配置 (go-base 扩展，可选) ====================
-# JWT 认证配置（如果启用，Gateway 会在请求转发前进行 JWT 验证）
-# 验证成功后，Gateway 会将用户信息透传给后端 gRPC（通过 grpc-gateway 约定的 Grpc-Metadata- 前缀 Header）：
+# ==================== JWT configuration (go-base extension, optional) ====================
+# JWT auth configuration (when enabled, Gateway verifies JWT before forwarding requests)
+# After successful verification, Gateway passes user info through to backend gRPC
+# (via grpc-gateway convention using the "Grpc-Metadata-" prefix headers):
 # - Grpc-Metadata-x-jwt-user-id
 # - Grpc-Metadata-x-jwt-user-name
 # Jwt:
-#   Secret: your-jwt-secret-key  # JWT 密钥（必需）
-#   SkipPaths:                    # 跳过 JWT 验证的路径列表（可选）
+#   Secret: your-jwt-secret-key  # JWT secret (required)
+#   SkipPaths:                    # Paths that skip JWT verification (optional)
 #     - /ping
 #     - /health
 
-# ==================== 应用配置 (go-base 扩展) ====================
-# 应用配置
+# ==================== Application configuration (go-base extension) ====================
+# Application configuration
 App:
   Name: Gateway
   Version: 1.0.0
   Env: dev  # dev, test, prod
 
-# ==================== Gateway 上游配置 (Upstreams) ====================
-# Gateway 上游服务配置
+# ==================== Gateway upstreams (Upstreams) ====================
+# Gateway upstream service configuration
 Upstreams:
-  # HTTP-to-gRPC Gateway 示例
+  # HTTP-to-gRPC Gateway example
   - Grpc:
-      Target: localhost:50001  # gRPC 服务地址
-      # 或者使用 etcd 服务发现
+      Target: localhost:50001  # gRPC service address
+      # Or use etcd service discovery
       # Etcd:
       #   Hosts:
       #     - localhost:2379
-      #   Key: ping.rpc  # 服务发现键名
+      #   Key: ping.rpc  # Service discovery key
     ProtoSets:
-      - pb/ping.pb  # proto 文件路径（相对于 gateway 目录）
+      - pb/ping.pb  # Proto descriptor path (relative to gateway directory)
     Mappings:
       - Method: GET
         Path: /ping
         RpcPath: ping.Ping/Ping
-        # JWT 配置（可选，如果配置了全局 JWT，这里可以控制单个路由是否跳过）
-        # 注意：go-zero 的 RouteMapping 不支持自定义字段，这里只是注释说明
-        # 实际控制通过全局 Jwt.SkipPaths 配置
+        # JWT config (optional; if global JWT is enabled, this documents how to skip per route)
+        # Note: go-zero RouteMapping does not support custom fields; this is documentation only.
+        # Actual control is via the global Jwt.SkipPaths config.
   
-  # HTTP-to-HTTP Gateway 示例
+  # HTTP-to-HTTP Gateway example
   # - Name: userapi
   #   Http:
-  #     Target: localhost:8080  # HTTP 服务地址
-  #     Prefix: /api  # 路径前缀
-  #     Timeout: 3000  # 超时时间（毫秒）
+  #     Target: localhost:8080  # HTTP service address
+  #     Prefix: /api  # Path prefix
+  #     Timeout: 3000  # Timeout (milliseconds)
   #   Mappings:
   #     - Method: GET
   #       Path: /users
-  #       # 转发到 http://localhost:8080/api/users
+  #       # Forward to http://localhost:8080/api/users

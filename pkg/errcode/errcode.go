@@ -1,4 +1,4 @@
-// Package errcode 提供统一的错误码定义
+// Package errcode provides unified error code definitions.
 package errcode
 
 import (
@@ -6,19 +6,19 @@ import (
 	"net/http"
 )
 
-// Error 统一错误结构
+// Error is the unified error structure.
 type Error struct {
 	Code     int    `json:"code"`
 	Msg      string `json:"msg"`
 	HTTPCode int    `json:"-"`
 }
 
-// Error 实现 error 接口
+// Error implements the error interface.
 func (e *Error) Error() string {
 	return fmt.Sprintf("code: %d, msg: %s", e.Code, e.Msg)
 }
 
-// WithMsg 返回带新消息的错误（不修改原错误）
+// WithMsg returns a copy with a new message (does not modify the original error).
 func (e *Error) WithMsg(msg string) *Error {
 	return &Error{
 		Code:     e.Code,
@@ -27,7 +27,7 @@ func (e *Error) WithMsg(msg string) *Error {
 	}
 }
 
-// GetHTTPCode 获取 HTTP 状态码
+// GetHTTPCode returns the HTTP status code.
 func (e *Error) GetHTTPCode() int {
 	if e.HTTPCode > 0 {
 		return e.HTTPCode
@@ -35,7 +35,7 @@ func (e *Error) GetHTTPCode() int {
 	return http.StatusOK
 }
 
-// New 创建错误码
+// New creates an error code.
 func New(code int, msg string) *Error {
 	return &Error{
 		Code:     code,
@@ -44,7 +44,7 @@ func New(code int, msg string) *Error {
 	}
 }
 
-// NewWithHTTP 创建带 HTTP 状态码的错误
+// NewWithHTTP creates an error with an HTTP status code.
 func NewWithHTTP(code int, msg string, httpCode int) *Error {
 	return &Error{
 		Code:     code,
@@ -53,7 +53,7 @@ func NewWithHTTP(code int, msg string, httpCode int) *Error {
 	}
 }
 
-// IsError 判断是否为指定错误码
+// IsError reports whether err matches the target error code.
 func IsError(err error, target *Error) bool {
 	if err == nil || target == nil {
 		return false
@@ -64,7 +64,7 @@ func IsError(err error, target *Error) bool {
 	return false
 }
 
-// FromError 从 error 转为 *Error
+// FromError converts an error into *Error.
 func FromError(err error) *Error {
 	if err == nil {
 		return nil
@@ -75,7 +75,7 @@ func FromError(err error) *Error {
 	return ErrInternal.WithMsg(err.Error())
 }
 
-// Code 获取错误码
+// Code returns the error code.
 func Code(err error) int {
 	if err == nil {
 		return OK.Code
@@ -86,7 +86,7 @@ func Code(err error) int {
 	return ErrInternal.Code
 }
 
-// Msg 获取错误信息
+// Msg returns the error message.
 func Msg(err error) string {
 	if err == nil {
 		return OK.Msg

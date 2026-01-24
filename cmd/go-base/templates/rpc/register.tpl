@@ -7,8 +7,8 @@ import (
 	{{.importPackages}}
 )
 
-// RegisterServices 注册所有 gRPC 服务
-// 在此函数中添加新的服务注册，类似 HTTP 的 handler.RegisterHandlers
+// RegisterServices registers all gRPC services.
+// Add new service registrations here, similar to HTTP handler.RegisterHandlers.
 func RegisterServices(grpcServer *grpc.Server, ctx *svc.ServiceContext) {
 	{{.serviceRegistrations}}
 }

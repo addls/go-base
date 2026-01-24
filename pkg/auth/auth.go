@@ -7,17 +7,17 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// JWT Header 常量
+// JWT header constants.
 const (
-	// JwtUserIdHeader JWT UserId 透传的 HTTP Header 名称（便捷字段）
+	// JwtUserIdHeader HTTP header name used to pass through the JWT user id (convenience field).
 	JwtUserIdHeader = "x-jwt-user-id"
-	// JwtUserNameHeader JWT UserName 透传的 HTTP Header 名称
+	// JwtUserNameHeader HTTP header name used to pass through the JWT user name.
 	JwtUserNameHeader = "x-jwt-user-name"
 )
 
-// GetClaims 从 context 中获取 JWT Claims（统一接口，自动识别 HTTP 或 gRPC）
-// 返回完整的 Claims，可以从中提取任何字段
-// 直接从 metadata 中提取所有字段构建 claims
+// GetClaims extracts JWT claims from context (unified API, works for HTTP or gRPC).
+// It returns the full claims map, from which any field can be extracted.
+// Claims are built by copying all fields from incoming gRPC metadata.
 func GetClaims(ctx context.Context) jwt.MapClaims {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -26,29 +26,29 @@ func GetClaims(ctx context.Context) jwt.MapClaims {
 
 	claims := make(jwt.MapClaims)
 
-	// 直接遍历 metadata 中的所有字段
+	// Iterate all fields in metadata.
 	for key, values := range md {
 		if len(values) > 0 {
-			// 直接使用 key 作为 claims 的 key，value 作为 claims 的 value
+			// Use metadata key as claim key, and the first value as claim value.
 			claims[key] = values[0]
 		}
 	}
 	
-	// 如果没有任何 claims，返回 nil
+	// If there are no claims, return nil.
 	if len(claims) == 0 {
 		return nil
 	}
 	return claims
 }
 
-// GetUserID 从 context 中获取 UserId（统一接口，自动识别 HTTP 或 gRPC）
-// 便捷方法，直接返回 UserId
+// GetUserID extracts UserId from context (unified API, works for HTTP or gRPC).
+// Convenience helper: returns UserId directly.
 func GetUserID(ctx context.Context) string {
 	return getFromGrpcMetadata(ctx, JwtUserIdHeader)
 }
 
-// GetUserName 从 context 中获取 UserName（统一接口，自动识别 HTTP 或 gRPC）
-// 便捷方法，直接返回 UserName
+// GetUserName extracts UserName from context (unified API, works for HTTP or gRPC).
+// Convenience helper: returns UserName directly.
 func GetUserName(ctx context.Context) string {
 	return getFromGrpcMetadata(ctx, JwtUserNameHeader)
 }
@@ -59,7 +59,7 @@ func getFromGrpcMetadata(ctx context.Context, key string) string {
 		return ""
 	}
 
-	// 兼容：有的链路会加 "gateway-" 前缀
+	// Compatibility: some hops add the "gateway-" prefix.
 	keys := []string{
 		key,            // x-jwt-...
 		"gateway-" + key, // gateway-x-jwt-...

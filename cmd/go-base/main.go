@@ -85,28 +85,28 @@ Example:
 func runInit(cmd *cobra.Command, args []string) error {
 	projectName := args[0]
 
-	// 检查项目目录是否已存在
+	// Check whether the project directory already exists.
 	if _, err := os.Stat(projectName); err == nil {
 		return fmt.Errorf("project directory '%s' already exists. Please remove it first or use a different name", projectName)
 	}
 
 	fmt.Printf("🚀 Initializing business project: %s\n", projectName)
 
-	// 1. 检查并安装 goctl
+	// 1. Check and install goctl.
 	fmt.Println("\n📦 Step 1: Checking and installing goctl...")
 	if err := checkAndInstallGoctl(); err != nil {
 		return fmt.Errorf("failed to check/install goctl: %w", err)
 	}
 	fmt.Println("✓ goctl is ready")
 
-	// 2. 安装公司级 goctl 模板（从嵌入的文件系统）
+	// 2. Install company-level goctl templates (from the embedded filesystem).
 	fmt.Println("\n📋 Step 2: Installing go-base templates...")
 	if err := installGoBaseTemplates(); err != nil {
 		return fmt.Errorf("failed to install go-base templates: %w", err)
 	}
 	fmt.Println("✓ Templates installed")
 
-	// 3. 创建项目主目录结构
+	// 3. Create the project root directory structure.
 	fmt.Println("\n🏗️  Step 3: Creating project structure...")
 	if err := os.MkdirAll(projectName, 0755); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
@@ -119,7 +119,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ Project directories created")
 
-	// 4. 在主目录下初始化 go.mod
+	// 4. Initialize go.mod in the project root directory.
 	fmt.Println("\n📦 Step 4: Initializing go.mod...")
 	modInitCmd := exec.Command("go", "mod", "init", projectName)
 	modInitCmd.Dir = projectName
@@ -130,7 +130,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ go.mod initialized")
 
-	// 5. 在 services/ping 目录下生成 proto 文件
+	// 5. Generate proto file under services/ping.
 	fmt.Println("\n📝 Step 5: Generating proto file in services/ping...")
 	pingDir := filepath.Join(projectName, "services", "ping")
 	rpcProtoCmd := exec.Command("goctl", "rpc", "-o", "ping.proto")
@@ -142,7 +142,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ Proto file generated")
 
-	// 6. 在 services/ping 目录下生成 RPC 服务代码
+	// 6. Generate RPC service code under services/ping.
 	fmt.Println("\n🔧 Step 6: Generating RPC service code...")
 	protocCmd := exec.Command("goctl", "rpc", "protoc", "ping.proto",
 		"--go_out=./pb",
@@ -159,28 +159,28 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ RPC service code generated")
 
-	// 6.1 生成 internal/server/server.go 文件（使用 register.tpl）
+	// 6.1 Generate internal/server/server.go (using register.tpl).
 	fmt.Println("\n📝 Step 6.1: Generating server registration file...")
 	if err := generateServerRegisterFile(pingDir); err != nil {
 		return fmt.Errorf("failed to generate server register file: %w", err)
 	}
 	fmt.Println("✓ Server registration file generated")
 
-	// 6.2 确保 main.go 导入了 server 包
+	// 6.2 Ensure main.go imports the server package.
 	fmt.Println("\n📝 Step 6.2: Updating main.go imports...")
 	if err := ensureServerImportInMain(pingDir); err != nil {
 		return fmt.Errorf("failed to update main.go imports: %w", err)
 	}
 	fmt.Println("✓ Main.go imports updated")
 
-	// 6.3 重命名 RPC 服务配置文件为 config.yaml
+	// 6.3 Rename the RPC service config file to config.yaml.
 	fmt.Println("\n📝 Step 6.3: Renaming RPC config file to config.yaml...")
 	if err := renameRpcConfigFile(pingDir); err != nil {
 		return fmt.Errorf("failed to rename RPC config file: %w", err)
 	}
 	fmt.Println("✓ RPC config file renamed to config.yaml")
 
-	// 7. 在 gateway 目录下生成 Gateway 服务代码
+	// 7. Generate Gateway service code under gateway.
 	fmt.Println("\n🌐 Step 7: Generating Gateway service code...")
 	gatewayDir := filepath.Join(projectName, "gateway")
 	gatewayCmd := exec.Command("goctl", "gateway", "--dir", ".")
@@ -192,7 +192,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ Gateway service code generated")
 
-	// 8. 重命名 gateway 配置文件
+	// 8. Rename the gateway config file.
 	gatewayConfigFile := filepath.Join(gatewayDir, "etc", "gateway.yaml")
 	gatewayTargetFile := filepath.Join(gatewayDir, "etc", "config.yaml")
 	if _, err := os.Stat(gatewayConfigFile); err == nil {
@@ -203,7 +203,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 9. 生成 gateway 所需的 proto descriptor 文件
+	// 9. Generate the proto descriptor file required by the gateway.
 	fmt.Println("\n📝 Step 9: Generating proto descriptor file for gateway...")
 	gatewayPbDir := filepath.Join(gatewayDir, "pb")
 	if err := os.MkdirAll(gatewayPbDir, 0755); err != nil {
@@ -212,11 +212,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 	
 	pingProtoFile := filepath.Join(projectName, "services", "ping", "ping.proto")
 	
-	// 检查 proto 文件是否存在
+	// Check whether the proto file exists.
 	if _, err := os.Stat(pingProtoFile); os.IsNotExist(err) {
 		fmt.Printf("⚠ Warning: proto file not found: %s, skipping descriptor generation\n", pingProtoFile)
 	} else {
-		// 从项目根目录运行 protoc，使用相对路径
+		// Run protoc from the project root using relative paths.
 		protocCmd := exec.Command("protoc",
 			"--descriptor_set_out", filepath.Join("gateway", "pb", "ping.pb"),
 			"--include_imports",
@@ -232,7 +232,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 10. 执行 go mod tidy
+	// 10. Run go mod tidy.
 	fmt.Println("\n📦 Step 10: Running go mod tidy...")
 	modCmd := exec.Command("go", "mod", "tidy")
 	modCmd.Dir = projectName
@@ -269,18 +269,18 @@ func runInit(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// checkAndInstallGoctl 检查并安装 goctl
+// checkAndInstallGoctl checks and installs goctl.
 func checkAndInstallGoctl() error {
-	// 先检查 goctl 是否已安装
+	// First, check if goctl is already installed.
 	if _, err := exec.LookPath("goctl"); err == nil {
-		// goctl 已安装，运行环境检查
+		// goctl is installed; run environment check.
 		checkCmd := exec.Command("goctl", "env", "check", "--install", "--verbose", "--force")
 		checkCmd.Stdout = os.Stdout
 		checkCmd.Stderr = os.Stderr
 		return checkCmd.Run()
 	}
 
-	// goctl 未安装，尝试安装
+	// goctl is not installed; try installing it.
 	fmt.Println("goctl not found, installing...")
 	installCmd := exec.Command("go", "install", "github.com/zeromicro/go-zero/tools/goctl@latest")
 	installCmd.Stdout = os.Stdout
@@ -289,16 +289,16 @@ func checkAndInstallGoctl() error {
 		return fmt.Errorf("failed to install goctl: %w", err)
 	}
 
-	// 安装后运行环境检查
+	// Run environment check after installation.
 	checkCmd := exec.Command("goctl", "env", "check", "--install", "--verbose", "--force")
 	checkCmd.Stdout = os.Stdout
 	checkCmd.Stderr = os.Stderr
 	return checkCmd.Run()
 }
 
-// installGoBaseTemplates 安装公司级 goctl 模板
+// installGoBaseTemplates installs company-level goctl templates.
 func installGoBaseTemplates() error {
-	// 1. 初始化 goctl 模板目录
+	// 1. Initialize goctl template directory.
 	initCmd := exec.Command("goctl", "template", "init")
 	initCmd.Stdout = os.Stdout
 	initCmd.Stderr = os.Stderr
@@ -306,14 +306,14 @@ func installGoBaseTemplates() error {
 		return fmt.Errorf("failed to init goctl templates: %w", err)
 	}
 
-	// 2. 获取 goctl 版本号
+	// 2. Get goctl version.
 	versionCmd := exec.Command("goctl", "-v")
 	versionOutput, err := versionCmd.Output()
 	if err != nil {
 		return fmt.Errorf("failed to get goctl version: %w", err)
 	}
 
-	// 解析版本号（格式：goctl version 1.8.5）
+	// Parse version string (format: goctl version 1.8.5).
 	versionStr := strings.TrimSpace(string(versionOutput))
 	parts := strings.Fields(versionStr)
 	var version string
@@ -323,7 +323,7 @@ func installGoBaseTemplates() error {
 		return fmt.Errorf("cannot parse goctl version from: %s", versionStr)
 	}
 
-	// 3. 复制 API 模板文件（从嵌入的文件系统）
+	// 3. Copy API template files (from embedded filesystem).
 	apiTemplateDir := filepath.Join(os.Getenv("HOME"), ".goctl", version, "api")
 	if err := os.MkdirAll(apiTemplateDir, 0755); err != nil {
 		return fmt.Errorf("failed to create api template directory: %w", err)
@@ -332,7 +332,7 @@ func installGoBaseTemplates() error {
 		return fmt.Errorf("failed to copy api templates: %w", err)
 	}
 
-	// 4. 复制 RPC 模板文件（从嵌入的文件系统）
+	// 4. Copy RPC template files (from embedded filesystem).
 	rpcTemplateDir := filepath.Join(os.Getenv("HOME"), ".goctl", version, "rpc")
 	if err := os.MkdirAll(rpcTemplateDir, 0755); err != nil {
 		return fmt.Errorf("failed to create rpc template directory: %w", err)
@@ -341,7 +341,7 @@ func installGoBaseTemplates() error {
 		return fmt.Errorf("failed to copy rpc templates: %w", err)
 	}
 
-	// 5. 复制 Gateway 模板文件（从嵌入的文件系统）
+	// 5. Copy Gateway template files (from embedded filesystem).
 	gatewayTemplateDir := filepath.Join(os.Getenv("HOME"), ".goctl", version, "gateway")
 	if err := os.MkdirAll(gatewayTemplateDir, 0755); err != nil {
 		return fmt.Errorf("failed to create gateway template directory: %w", err)
@@ -353,14 +353,14 @@ func installGoBaseTemplates() error {
 	return nil
 }
 
-// copyTemplatesFromEmbed 从嵌入的文件系统复制模板文件
+// copyTemplatesFromEmbed copies template files from an embedded filesystem.
 func copyTemplatesFromEmbed(embedFS embed.FS, srcDir, dstDir string) error {
 	return fs.WalkDir(embedFS, srcDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// 计算相对路径（去掉 templates/api/ 前缀）
+		// Compute relative path (strip templates/api/ prefix).
 		relPath, err := filepath.Rel(srcDir, path)
 		if err != nil {
 			return err
@@ -372,28 +372,28 @@ func copyTemplatesFromEmbed(embedFS embed.FS, srcDir, dstDir string) error {
 			return os.MkdirAll(dstPath, 0755)
 		}
 
-		// 读取嵌入的文件
+		// Read the embedded file.
 		data, err := embedFS.ReadFile(path)
 		if err != nil {
 			return err
 		}
 
-		// 写入目标文件
+		// Write to destination file.
 		return os.WriteFile(dstPath, data, 0644)
 	})
 }
 
-// runUpgrade 执行升级命令
+// runUpgrade executes the upgrade command.
 func runUpgrade(cmd *cobra.Command, args []string) error {
 	fmt.Printf("🔄 Upgrading go-base CLI tool...\n")
 	fmt.Printf("Current version: %s\n\n", version)
 
-	// 检查 go 命令是否可用
+	// Check whether the go command is available.
 	if _, err := exec.LookPath("go"); err != nil {
 		return fmt.Errorf("go command not found. Please install Go first: https://golang.org/dl/")
 	}
 
-	// 1. 升级 CLI 工具（升级到当前主版本的最新小版本）
+	// 1. Upgrade CLI tool (to the latest patch within current major version).
 	majorVersion := getMajorVersion(version)
 	cliTarget := fmt.Sprintf("github.com/addls/go-base/cmd/go-base@%s", majorVersion)
 	fmt.Printf("📦 Step 1: Upgrading go-base CLI tool to %s (latest patch version)...\n", majorVersion)
@@ -406,9 +406,9 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ CLI tool upgraded")
 
-	// 2. 检查当前目录是否是 Go 项目，如果是则升级依赖
+	// 2. If current directory is a Go project, upgrade dependency as well.
 	if err := upgradeProjectDependency(); err != nil {
-		// 升级依赖失败不影响 CLI 工具升级，只打印警告
+		// Dependency upgrade failure does not affect CLI upgrade; only print a warning.
 		majorVersion := getMajorVersion(version)
 		fmt.Printf("\n⚠ Warning: Failed to upgrade project dependency: %v\n", err)
 		fmt.Println("You can manually upgrade by running:")
@@ -423,50 +423,50 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// getMajorVersion 从版本号中提取主版本号（如 v1.0.0 -> v1）
+// getMajorVersion extracts the major version from a version string (e.g., v1.0.0 -> v1).
 func getMajorVersion(v string) string {
-	// 移除前缀 "v" 如果存在
+	// Remove "v" prefix if present.
 	v = strings.TrimPrefix(v, "v")
 
-	// 按 "." 分割版本号
+	// Split version by ".".
 	parts := strings.Split(v, ".")
 	if len(parts) > 0 {
-		// 返回主版本号，如 "1" -> "v1"
+		// Return major version, e.g. "1" -> "v1".
 		return "v" + parts[0]
 	}
 
-	// 如果无法解析，返回原版本号
+	// If parsing fails, return original version string.
 	return v
 }
 
-// upgradeProjectDependency 升级当前项目中的 go-base 依赖
+// upgradeProjectDependency upgrades github.com/addls/go-base dependency in the current project.
 func upgradeProjectDependency() error {
-	// 检查当前目录是否有 go.mod 文件
+	// Check whether go.mod exists in current directory.
 	if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
-		// 不是 Go 项目，跳过
+		// Not a Go project; skip.
 		return nil
 	}
 
-	// 读取 go.mod 检查是否有 go-base 依赖
+	// Read go.mod to see whether go-base dependency is present.
 	goModData, err := os.ReadFile("go.mod")
 	if err != nil {
 		return fmt.Errorf("failed to read go.mod: %w", err)
 	}
 
-	// 检查是否包含 go-base 依赖
+	// Check whether go-base dependency is included.
 	if !strings.Contains(string(goModData), "github.com/addls/go-base") {
-		// 没有 go-base 依赖，跳过
+		// No go-base dependency; skip.
 		return nil
 	}
 
-	// 从当前 CLI 版本中提取主版本号
+	// Extract major version from current CLI version.
 	majorVersion := getMajorVersion(version)
 	targetVersion := fmt.Sprintf("github.com/addls/go-base@%s", majorVersion)
 
-	// 升级项目依赖
+	// Upgrade project dependency.
 	fmt.Printf("\n📦 Step 2: Upgrading github.com/addls/go-base dependency to %s (latest patch version)...\n", majorVersion)
 
-	// 使用 go get 更新依赖到当前主版本的最新小版本
+	// Use go get to update dependency to the latest patch within current major version.
 	getCmd := exec.Command("go", "get", targetVersion)
 	getCmd.Stdout = os.Stdout
 	getCmd.Stderr = os.Stderr
@@ -474,7 +474,7 @@ func upgradeProjectDependency() error {
 		return fmt.Errorf("failed to run go get: %w", err)
 	}
 
-	// 运行 go mod tidy 整理依赖
+	// Run go mod tidy to tidy dependencies.
 	fmt.Println("📦 Running go mod tidy...")
 	tidyCmd := exec.Command("go", "mod", "tidy")
 	tidyCmd.Stdout = os.Stdout
@@ -487,8 +487,8 @@ func upgradeProjectDependency() error {
 	return nil
 }
 
-// generateServerRegisterFile 生成 internal/server/server.go 文件
-// 直接遍历 internal/server 下的所有子目录，找到对应的 server 文件并生成注册代码
+// generateServerRegisterFile generates internal/server/server.go.
+// It walks all subdirectories under internal/server, finds server files, and generates registration code.
 func generateServerRegisterFile(serviceDir string) error {
 	modulePath := extractModulePath(serviceDir)
 	if modulePath == "" {
@@ -498,12 +498,12 @@ func generateServerRegisterFile(serviceDir string) error {
 	serverDir := filepath.Join(serviceDir, "internal", "server")
 	pbDir := filepath.Join(serviceDir, "pb")
 
-	// 检查 server 目录是否存在
+	// Check whether server directory exists.
 	if _, err := os.Stat(serverDir); os.IsNotExist(err) {
 		return fmt.Errorf("server directory does not exist: %s (make sure RPC code is generated first)", serverDir)
 	}
 
-	// 1. 遍历 internal/server 下的所有子目录
+	// 1. Walk all subdirectories under internal/server.
 	serverSubDirs, err := os.ReadDir(serverDir)
 	if err != nil {
 		return fmt.Errorf("failed to read server directory: %w", err)
@@ -522,12 +522,12 @@ func generateServerRegisterFile(serviceDir string) error {
 		}
 		serverPkg := serverSubDir.Name()
 
-		// 跳过 server.go 文件（如果存在）
+		// Skip server.go file (if present).
 		if serverPkg == "server.go" || strings.HasSuffix(serverPkg, ".go") {
 			continue
 		}
 
-		// 2. 查找 server 文件，提取 NewXxxServer 函数
+		// 2. Find server file and extract the NewXxxServer function.
 		serverFiles, err := filepath.Glob(filepath.Join(serverDir, serverPkg, "*_server.go"))
 		if err != nil {
 			fmt.Printf("⚠ Warning: failed to glob server files for %s: %v\n", serverPkg, err)
@@ -543,18 +543,18 @@ func generateServerRegisterFile(serviceDir string) error {
 			continue
 		}
 
-		// 查找 NewXxxServer 函数
+		// Find NewXxxServer function.
 		serverLines := strings.Split(string(serverContent), "\n")
 		var newServerFunc string
 		for _, line := range serverLines {
-			// 匹配格式：func NewXxxServer(...) *XxxServer
+			// Match: func NewXxxServer(...) *XxxServer
 			if strings.Contains(line, "func New") && strings.Contains(line, "Server") {
-				// 格式：func NewPingServer(svcCtx *svc.ServiceContext) *PingServer
-				// 提取函数名：找到 "func " 后面的单词，直到遇到 "("
+				// Example: func NewPingServer(svcCtx *svc.ServiceContext) *PingServer
+				// Extract function name: take the word after "func " until "(".
 				funcIdx := strings.Index(line, "func ")
 				if funcIdx >= 0 {
-					funcPart := line[funcIdx+5:] // 跳过 "func "
-					// 找到函数名的结束位置（空格或左括号）
+					funcPart := line[funcIdx+5:] // Skip "func "
+					// Find the end of function name (space or left parenthesis).
 					endIdx := strings.IndexAny(funcPart, " (")
 					if endIdx > 0 {
 						funcName := funcPart[:endIdx]
@@ -572,18 +572,18 @@ func generateServerRegisterFile(serviceDir string) error {
 			continue
 		}
 
-		// 3. 查找对应的 pb 包，提取 RegisterXxxServer 函数名
-		// 优先查找同名的 pb 包
+		// 3. Find corresponding pb package and extract RegisterXxxServer function name.
+		// Prefer a pb package with the same name.
 		pbPkg := serverPkg
 
-		// 检查 pb 目录是否存在
+		// Check whether pb directory exists.
 		if _, err := os.Stat(pbDir); os.IsNotExist(err) {
 			return fmt.Errorf("pb directory does not exist: %s (make sure RPC code is generated first)", pbDir)
 		}
 
 		grpcFiles, err := filepath.Glob(filepath.Join(pbDir, pbPkg, "*_grpc.pb.go"))
 		if err != nil || len(grpcFiles) == 0 {
-			// 如果同名包不存在，尝试查找所有 pb 包
+			// If same-name package doesn't exist, try all pb packages.
 			pbSubDirs, err := os.ReadDir(pbDir)
 			if err != nil {
 				fmt.Printf("⚠ Warning: failed to read pb directory: %v, skipping server package %s\n", err, serverPkg)
@@ -612,17 +612,17 @@ func generateServerRegisterFile(serviceDir string) error {
 			continue
 		}
 
-		// 查找 RegisterXxxServer 函数
+		// Find RegisterXxxServer function.
 		grpcLines := strings.Split(string(grpcContent), "\n")
 		var registerFunc string
 		for _, line := range grpcLines {
-			// 匹配格式：func RegisterXxxServer(s grpc.ServiceRegistrar, srv XxxServer)
+			// Match: func RegisterXxxServer(s grpc.ServiceRegistrar, srv XxxServer)
 			if strings.Contains(line, "func Register") && strings.Contains(line, "Server") {
-				// 提取函数名：找到 "func " 后面的单词，直到遇到 "("
+				// Extract function name: take the word after "func " until "(".
 				funcIdx := strings.Index(line, "func ")
 				if funcIdx >= 0 {
-					funcPart := line[funcIdx+5:] // 跳过 "func "
-					// 找到函数名的结束位置（空格或左括号）
+					funcPart := line[funcIdx+5:] // Skip "func "
+					// Find the end of function name (space or left parenthesis).
 					endIdx := strings.IndexAny(funcPart, " (")
 					if endIdx > 0 {
 						funcName := funcPart[:endIdx]
@@ -640,15 +640,15 @@ func generateServerRegisterFile(serviceDir string) error {
 			continue
 		}
 
-		// 4. 生成注册代码
-		// 格式：pbPkg.RegisterXxxServer(grpcServer, serverPkgAlias.NewXxxServer(ctx))
+		// 4. Generate registration code.
+		// Format: pbPkg.RegisterXxxServer(grpcServer, serverPkgAlias.NewXxxServer(ctx))
 		pbImportPath := filepath.ToSlash(filepath.Join(modulePath, "pb", pbPkg))
 		serverImportPath := filepath.ToSlash(filepath.Join(modulePath, "internal", "server", serverPkg))
 
-		// 如果 pb 包名和 server 包名相同，需要为 server 包使用别名
+		// If pb package name is the same as server package name, use an alias for the server package.
 		serverPkgAlias := serverPkg
 		if pbPkg == serverPkg {
-			// 使用 serverPkg 作为别名，例如：serverPing "test_project/services/ping/internal/server/ping"
+			// Use an alias, e.g. serverPing "test_project/services/ping/internal/server/ping"
 			serverPkgAlias = "server" + strings.ToUpper(serverPkg[:1]) + serverPkg[1:]
 		}
 
@@ -656,9 +656,9 @@ func generateServerRegisterFile(serviceDir string) error {
 			pbPkg, registerFunc, serverPkgAlias, newServerFunc)
 		serviceRegistrations = append(serviceRegistrations, registration)
 
-		// 添加导入
+		// Add imports.
 		importMap[pbImportPath] = pbPkg
-		// 如果包名相同，使用别名
+		// Use alias if package names are the same.
 		if pbPkg == serverPkg {
 			importMap[serverImportPath] = serverPkgAlias
 		} else {
@@ -667,7 +667,7 @@ func generateServerRegisterFile(serviceDir string) error {
 	}
 
 	if len(serviceRegistrations) == 0 {
-		// 输出调试信息
+		// Output debug information.
 		fmt.Printf("Debug: serverDir=%s, found %d server subdirs\n", serverDir, len(serverSubDirs))
 		for _, subDir := range serverSubDirs {
 			if subDir.IsDir() {
@@ -677,8 +677,8 @@ func generateServerRegisterFile(serviceDir string) error {
 		return fmt.Errorf("no services found to register (checked %d server packages)", len(serverSubDirs))
 	}
 
-	// 5. 构建导入列表
-	// 按照特定顺序排列：先 server 包（带别名），再 pb 包，最后 svc
+	// 5. Build import list.
+	// Use a specific order: server packages (with alias) first, then pb packages, and finally svc.
 	var importPackages []string
 	var serverImports []string
 	var pbImports []string
@@ -691,7 +691,7 @@ func generateServerRegisterFile(serviceDir string) error {
 			importLine = fmt.Sprintf("\t%s \"%s\"", alias, importPath)
 		}
 
-		// 分类：server 包（带别名）和 pb 包
+		// Categorize: server packages (with alias) and pb packages.
 		if strings.Contains(importPath, "internal/server") {
 			serverImports = append(serverImports, importLine)
 		} else if strings.Contains(importPath, "pb/") {
@@ -701,23 +701,23 @@ func generateServerRegisterFile(serviceDir string) error {
 		}
 	}
 
-	// 按顺序添加：先 server 包（带别名），再 pb 包
+	// Append in order: server packages (with alias) first, then pb packages.
 	importPackages = append(importPackages, serverImports...)
 	importPackages = append(importPackages, pbImports...)
 
-	// 最后添加 svc 导入
+	// Append svc import last.
 	svcImport := filepath.ToSlash(filepath.Join(modulePath, "internal", "svc"))
 	importPackages = append(importPackages, fmt.Sprintf("\t\"%s\"", svcImport))
 
-	// 6. 生成 server.go 文件（直接放在 internal/server/ 目录下）
+	// 6. Generate server.go (directly under internal/server/).
 	serverGoPath := filepath.Join(serverDir, "server.go")
 
-	// 替换模板变量
+	// Replace template variables.
 	content := registerTemplateContent
 	content = strings.ReplaceAll(content, "{{.importPackages}}", strings.Join(importPackages, "\n"))
 	content = strings.ReplaceAll(content, "{{.serviceRegistrations}}", strings.Join(serviceRegistrations, "\n"))
 
-	// 7. 写入文件
+	// 7. Write file.
 	if err := os.WriteFile(serverGoPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write server.go: %w", err)
 	}
@@ -725,14 +725,14 @@ func generateServerRegisterFile(serviceDir string) error {
 	return nil
 }
 
-// extractModulePath 从服务目录提取模块路径
+// extractModulePath extracts module path from a service directory.
 func extractModulePath(serviceDir string) string {
-	// 向上查找 go.mod 文件
+	// Walk up to find go.mod.
 	dir := serviceDir
 	for {
 		goModPath := filepath.Join(dir, "go.mod")
 		if _, err := os.Stat(goModPath); err == nil {
-			// 读取 go.mod 获取模块名
+			// Read go.mod to get module name.
 			content, err := os.ReadFile(goModPath)
 			if err == nil {
 				lines := strings.Split(string(content), "\n")
@@ -740,10 +740,10 @@ func extractModulePath(serviceDir string) string {
 					line = strings.TrimSpace(line)
 					if strings.HasPrefix(line, "module ") {
 						moduleName := strings.TrimSpace(strings.TrimPrefix(line, "module "))
-						// 计算相对路径
+						// Compute relative path.
 						relPath, err := filepath.Rel(dir, serviceDir)
 						if err == nil {
-							// 使用 filepath.ToSlash 确保使用 / 作为路径分隔符（Go import 路径要求）
+							// Use filepath.ToSlash to ensure "/" separators (required by Go import paths).
 							return filepath.ToSlash(filepath.Join(moduleName, relPath))
 						}
 						return moduleName
@@ -760,18 +760,18 @@ func extractModulePath(serviceDir string) string {
 	return ""
 }
 
-// ensureServerImportInMain 确保 main.go 文件导入了 server 包
-// 使用 goimports 自动处理导入（添加缺失的导入，移除未使用的导入）
+// ensureServerImportInMain ensures main.go imports the server package.
+// It uses goimports to manage imports (add missing, remove unused) automatically.
 func ensureServerImportInMain(serviceDir string) error {
 	mainGoPath := filepath.Join(serviceDir, filepath.Base(serviceDir)+".go")
-	// 如果主文件不存在，尝试查找其他可能的文件名
+	// If main file doesn't exist, try other possible filenames.
 	if _, err := os.Stat(mainGoPath); os.IsNotExist(err) {
-		// 尝试查找任何 .go 文件作为主文件
+		// Try any .go file as the main file.
 		goFiles, err := filepath.Glob(filepath.Join(serviceDir, "*.go"))
 		if err != nil || len(goFiles) == 0 {
 			return fmt.Errorf("main.go file not found in %s", serviceDir)
 		}
-		// 找到第一个非 test 的 go 文件
+		// Find the first non-test go file.
 		for _, f := range goFiles {
 			if !strings.HasSuffix(f, "_test.go") {
 				mainGoPath = f
@@ -780,9 +780,9 @@ func ensureServerImportInMain(serviceDir string) error {
 		}
 	}
 
-	// 检查 goimports 是否可用
+	// Check whether goimports is available.
 	if _, err := exec.LookPath("goimports"); err != nil {
-		// goimports 未安装，尝试安装
+		// goimports is not installed; try installing it.
 		fmt.Println("goimports not found, installing...")
 		installCmd := exec.Command("go", "install", "golang.org/x/tools/cmd/goimports@latest")
 		installCmd.Stdout = os.Stdout
@@ -792,7 +792,7 @@ func ensureServerImportInMain(serviceDir string) error {
 		}
 	}
 
-	// 先读取文件，检查是否需要添加 server 包的导入
+	// Read file first and check whether we need to add server package import.
 	content, err := os.ReadFile(mainGoPath)
 	if err != nil {
 		return fmt.Errorf("failed to read main.go: %w", err)
@@ -802,7 +802,7 @@ func ensureServerImportInMain(serviceDir string) error {
 	modulePath := extractModulePath(serviceDir)
 	serverImportPath := filepath.ToSlash(filepath.Join(modulePath, "internal", "server"))
 
-	// 检查是否已经导入了 server 包
+	// Check whether the server package is already imported.
 	hasServerImport := false
 	lines := strings.Split(contentStr, "\n")
 	for _, line := range lines {
@@ -812,9 +812,9 @@ func ensureServerImportInMain(serviceDir string) error {
 		}
 	}
 
-	// 如果没有导入 server 包，先添加它（临时添加，让 goimports 处理）
+	// If server package is not imported, add it temporarily and let goimports handle it.
 	if !hasServerImport {
-		// 在 import 块中添加 server 导入
+		// Add server import into the import block.
 		importStart := strings.Index(contentStr, "import (")
 		if importStart == -1 {
 			return fmt.Errorf("cannot find import block in main.go (expected multi-line import)")
@@ -829,7 +829,7 @@ func ensureServerImportInMain(serviceDir string) error {
 		importBlock := contentStr[importStart : importEnd+1]
 		newImport := fmt.Sprintf("\t\"%s\"\n", serverImportPath)
 
-		// 在最后一个导入后添加
+		// Append after the last import.
 		lastQuoteIdx := strings.LastIndex(importBlock[:len(importBlock)-1], "\"")
 		if lastQuoteIdx == -1 {
 			return fmt.Errorf("cannot find last import in import block")
@@ -848,13 +848,13 @@ func ensureServerImportInMain(serviceDir string) error {
 
 		contentStr = contentStr[:importStart] + importBlock + contentStr[importEnd+1:]
 
-		// 写入临时内容
+		// Write temporary content.
 		if err := os.WriteFile(mainGoPath, []byte(contentStr), 0644); err != nil {
 			return fmt.Errorf("failed to write main.go: %w", err)
 		}
 	}
 
-	// 使用 goimports 自动处理导入（添加缺失的，移除未使用的，格式化导入顺序）
+	// Use goimports to manage imports (add missing, remove unused, and format import order).
 	goimportsCmd := exec.Command("goimports", "-w", filepath.Base(mainGoPath))
 	goimportsCmd.Dir = serviceDir
 	goimportsCmd.Stdout = os.Stdout
@@ -866,11 +866,11 @@ func ensureServerImportInMain(serviceDir string) error {
 	return nil
 }
 
-// renameRpcConfigFile 重命名 RPC 服务的配置文件为 config.yaml
+// renameRpcConfigFile renames the RPC service config file to config.yaml.
 func renameRpcConfigFile(serviceDir string) error {
 	etcDir := filepath.Join(serviceDir, "etc")
 
-	// 查找 etc 目录下的所有 yaml 文件
+	// Find all yaml files under etc directory.
 	yamlFiles, err := filepath.Glob(filepath.Join(etcDir, "*.yaml"))
 	if err != nil {
 		return fmt.Errorf("failed to find yaml files: %w", err)
@@ -878,12 +878,12 @@ func renameRpcConfigFile(serviceDir string) error {
 
 	targetFile := filepath.Join(etcDir, "config.yaml")
 
-	// 如果 config.yaml 已经存在，不需要重命名
+	// If config.yaml already exists, no need to rename.
 	if _, err := os.Stat(targetFile); err == nil {
 		return nil
 	}
 
-	// 查找需要重命名的文件（排除 config.yaml）
+	// Find the file to rename (excluding config.yaml).
 	var sourceFile string
 	for _, yamlFile := range yamlFiles {
 		if filepath.Base(yamlFile) != "config.yaml" {
@@ -893,11 +893,11 @@ func renameRpcConfigFile(serviceDir string) error {
 	}
 
 	if sourceFile == "" {
-		// 没有找到配置文件，可能 goctl 没有生成，或者已经重命名了
+		// No config file found: goctl may not have generated it, or it may already have been renamed.
 		return nil
 	}
 
-	// 重命名文件
+	// Rename file.
 	if err := os.Rename(sourceFile, targetFile); err != nil {
 		return fmt.Errorf("failed to rename %s to %s: %w", sourceFile, targetFile, err)
 	}

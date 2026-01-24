@@ -11,78 +11,78 @@ import (
 	"github.com/addls/go-base/pkg/config"
 )
 
-// RpcConfig gRPC 服务基础配置（嵌入 zrpc.RpcServerConf）
+// RpcConfig base configuration for the gRPC service (embeds zrpc.RpcServerConf).
 type RpcConfig struct {
 	zrpc.RpcServerConf
 
-	// 应用配置
+	// Application configuration.
 	App config.AppConfig `json:",optional"`
 }
 
-// ServiceRegister gRPC 服务注册函数（注册到 grpc.Server）
+// ServiceRegister registers gRPC services into grpc.Server.
 type ServiceRegister func(server *grpc.Server)
 
-// RpcOption gRPC 启动选项
+// RpcOption options for starting the gRPC server.
 type RpcOption func(*rpcOptions)
 
 type rpcOptions struct {
-	config          *RpcConfig // 可选：如果提供则直接使用，否则从文件加载
+	config          *RpcConfig // Optional: if provided use directly; otherwise load from file.
 	interceptors    []grpc.UnaryServerInterceptor
 	serviceRegister ServiceRegister
 	beforeStart     func(*zrpc.RpcServer)
 	afterStart      func(*zrpc.RpcServer)
 }
 
-// WithRpcConfig 直接提供 gRPC 配置（可选，如果不提供则从文件加载）
+// WithRpcConfig provides the gRPC config directly (optional; if nil, it will be loaded from file).
 func WithRpcConfig(c *RpcConfig) RpcOption {
 	return func(o *rpcOptions) {
 		o.config = c
 	}
 }
 
-// WithRpcInterceptor 添加 gRPC 拦截器
+// WithRpcInterceptor adds gRPC interceptors.
 func WithRpcInterceptor(interceptors ...grpc.UnaryServerInterceptor) RpcOption {
 	return func(o *rpcOptions) {
 		o.interceptors = append(o.interceptors, interceptors...)
 	}
 }
 
-// WithRpcService 注册 gRPC 服务
+// WithRpcService registers gRPC services.
 func WithRpcService(register ServiceRegister) RpcOption {
 	return func(o *rpcOptions) {
 		o.serviceRegister = register
 	}
 }
 
-// WithRpcBeforeStart gRPC 启动前回调
+// WithRpcBeforeStart callback before the gRPC server starts.
 func WithRpcBeforeStart(fn func(*zrpc.RpcServer)) RpcOption {
 	return func(o *rpcOptions) {
 		o.beforeStart = fn
 	}
 }
 
-// WithRpcAfterStart gRPC 启动后回调
+// WithRpcAfterStart callback after the gRPC server starts.
 func WithRpcAfterStart(fn func(*zrpc.RpcServer)) RpcOption {
 	return func(o *rpcOptions) {
 		o.afterStart = fn
 	}
 }
 
-// RunRpc 启动 gRPC 服务
-// 统一入口：
-//   - 配置文件路径通过命令行 flag -f 控制（默认 etc/config.yaml）
-//   - 其它行为通过 RpcOption 扩展（服务注册、拦截器、回调等）
+// RunRpc starts the gRPC service.
+// Unified entry:
+//   - Config file path is controlled by the command-line flag -f (default: etc/config.yaml)
+//   - Other behaviors can be extended via RpcOption (service registration, interceptors, callbacks, etc.)
 func RunRpc(opts ...RpcOption) {
-	// 解析命令行参数，获取配置文件路径
+	// Parse command-line flags and get the config file path.
 	flag.Parse()
 
-	// 应用选项
+	// Apply options.
 	o := &rpcOptions{}
 	for _, opt := range opts {
 		opt(o)
 	}
 
-	// 加载基础配置：如果 opts 中提供了配置则直接使用，否则从文件加载
+	// Load base config: use the provided config if present; otherwise load from file.
 	var c RpcConfig
 	if o.config != nil {
 		c = *o.config
@@ -90,27 +90,27 @@ func RunRpc(opts ...RpcOption) {
 		conf.MustLoad(config.ConfigFile(), &c)
 	}
 
-	// 创建 gRPC 服务器
+	// Create gRPC server.
 	server := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
-		// 注册服务
+		// Register services.
 		if o.serviceRegister != nil {
 			o.serviceRegister(grpcServer)
 		}
 	})
 
-	// 注册拦截器
+	// Register interceptors.
 	for _, interceptor := range o.interceptors {
 		server.AddUnaryInterceptors(interceptor)
 	}
 
 	defer server.Stop()
 
-	// 启动前回调
+	// Before-start callback.
 	if o.beforeStart != nil {
 		o.beforeStart(server)
 	}
 
-	// 打印启动信息
+	// Log startup information.
 	logx.Infof("Starting gRPC server %s %s on %s [%s]",
 		c.App.Name,
 		c.App.Version,
@@ -118,11 +118,11 @@ func RunRpc(opts ...RpcOption) {
 		c.App.Env,
 	)
 
-	// 启动后回调
+	// After-start callback.
 	if o.afterStart != nil {
 		o.afterStart(server)
 	}
 
-	// 启动服务
+	// Start serving.
 	server.Start()
 }

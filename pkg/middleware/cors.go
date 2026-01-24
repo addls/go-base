@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-// CorsConfig CORS 配置
+// CorsConfig CORS configuration.
 type CorsConfig struct {
 	AllowOrigins     []string
 	AllowMethods     []string
@@ -14,7 +14,7 @@ type CorsConfig struct {
 	MaxAge           int
 }
 
-// DefaultCorsConfig 默认 CORS 配置
+// DefaultCorsConfig returns the default CORS config.
 func DefaultCorsConfig() CorsConfig {
 	return CorsConfig{
 		AllowOrigins:     []string{"*"},
@@ -26,12 +26,12 @@ func DefaultCorsConfig() CorsConfig {
 	}
 }
 
-// Cors 跨域中间件
+// Cors is a CORS middleware.
 func Cors() func(http.HandlerFunc) http.HandlerFunc {
 	return CorsWithConfig(DefaultCorsConfig())
 }
 
-// CorsWithConfig 带配置的跨域中间件
+// CorsWithConfig is a configurable CORS middleware.
 func CorsWithConfig(cfg CorsConfig) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +41,7 @@ func CorsWithConfig(cfg CorsConfig) func(http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 
-			// 检查是否允许该源
+			// Check whether the origin is allowed.
 			allowed := false
 			for _, o := range cfg.AllowOrigins {
 				if o == "*" || o == origin {
@@ -68,7 +68,7 @@ func CorsWithConfig(cfg CorsConfig) func(http.HandlerFunc) http.HandlerFunc {
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 
-			// 预检请求
+			// Preflight request.
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return

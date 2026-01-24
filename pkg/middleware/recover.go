@@ -10,7 +10,7 @@ import (
 	"github.com/addls/go-base/pkg/response"
 )
 
-// Recover panic 恢复中间件
+// Recover is a panic recovery middleware.
 func Recover() func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {

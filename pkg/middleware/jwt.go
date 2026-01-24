@@ -12,13 +12,13 @@ import (
 	"github.com/addls/go-base/pkg/response"
 )
 
-// JwtConfig JWT 配置
+// JwtConfig JWT configuration.
 type JwtConfig struct {
-	Secret    string   // JWT 密钥
-	SkipPaths []string // 跳过 JWT 验证的路径列表
+	Secret    string   // JWT secret
+	SkipPaths []string // Paths that skip JWT verification
 }
 
-// responseWriter 包装 http.ResponseWriter 来跟踪是否已写入响应
+// responseWriter wraps http.ResponseWriter to track whether a response has been written.
 type responseWriter struct {
 	http.ResponseWriter
 	written bool
@@ -41,56 +41,56 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return rw.ResponseWriter.Write(b)
 }
 
-// RegisterJwtMiddleware 注册 JWT 中间件到 Gateway
-// 使用 go-zero 的 handler.Authorize 进行 JWT 验证
-// 验证成功后，将 JWT claims 通过 HTTP Header 透传给后端服务
+// RegisterJwtMiddleware registers a JWT middleware for the Gateway.
+// It uses go-zero's handler.Authorize to verify JWT.
+// After successful verification, JWT claims are passed through to backend services via HTTP headers.
 func RegisterJwtMiddleware(secret string, skipPaths []string) rest.Middleware {
 	skipMap := make(map[string]bool)
 	for _, path := range skipPaths {
 		skipMap[path] = true
 	}
 
-	// 使用 go-zero 的 Authorize handler（返回中间件函数）
+	// Use go-zero's Authorize handler (returns a middleware function).
 	authorizeMiddleware := handler.Authorize(secret, handler.WithUnauthorizedCallback(func(w http.ResponseWriter, r *http.Request, err error) {
 		logx.WithContext(r.Context()).Errorf("JWT authorization failed: %v", err)
-		// 使用统一的错误响应格式
+		// Use the unified error response format.
 		response.ErrorWithCode(w, errcode.ErrUnauthorized.Code, errcode.ErrUnauthorized.Msg)
 	}))
 
 	return func(next http.HandlerFunc) http.HandlerFunc {
-		// 使用 authorizeMiddleware 包装 next，创建一个新的 handler
+		// Wrap next with authorizeMiddleware to create a new handler.
 		authorizedHandler := authorizeMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// 包装 ResponseWriter 来跟踪响应状态
+			// Wrap ResponseWriter to track response status.
 			rw := &responseWriter{ResponseWriter: w}
 
-			// 从 context 中提取 JWT claims（非标准字段）
-			// go-zero 的 handler.Authorize 会将非标准字段逐个放到 context 中，key 就是字段名
-			// 标准字段（sub, exp, iat, iss, aud, nbf, jti）会被忽略
+			// Extract JWT claims from context (non-standard fields).
+			// go-zero's handler.Authorize stores each non-standard field into context using the field name as the key.
+			// Standard fields (sub, exp, iat, iss, aud, nbf, jti) are ignored.
 			ctx := r.Context()
 			
-			// 提取用户信息（使用非标准字段 uid 和 name）
-			// 通过 HTTP Header 透传给后端服务
+			// Extract user info (using non-standard fields uid and name),
+			// and pass through to backend services via HTTP headers.
 			if uid, ok := ctx.Value("uid").(string); ok && uid != "" {
-				// grpc-gateway 转发到 gRPC metadata 需要 Grpc-Metadata- 前缀
+				// grpc-gateway forwarding into gRPC metadata requires the "Grpc-Metadata-" prefix.
 				r.Header.Set("Grpc-Metadata-"+auth.JwtUserIdHeader, uid)
 			}
 			if name, ok := ctx.Value("name").(string); ok && name != "" {
-				// grpc-gateway 转发到 gRPC metadata 需要 Grpc-Metadata- 前缀
+				// grpc-gateway forwarding into gRPC metadata requires the "Grpc-Metadata-" prefix.
 				r.Header.Set("Grpc-Metadata-"+auth.JwtUserNameHeader, name)
 			}
 
-			// 继续执行下一个 handler
+			// Continue to the next handler.
 			next(rw, r)
 		}))
 
 		return func(w http.ResponseWriter, r *http.Request) {
-			// 跳过的路径
+			// Skip paths.
 			if skipMap[r.URL.Path] {
 				next(w, r)
 				return
 			}
 
-			// 执行授权验证和后续处理
+			// Run authorization and the subsequent handler chain.
 			authorizedHandler.ServeHTTP(w, r)
 		}
 	}
