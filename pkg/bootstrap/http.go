@@ -9,6 +9,7 @@ import (
 
 	"github.com/addls/go-base/pkg/config"
 	"github.com/addls/go-base/pkg/middleware"
+	"github.com/addls/go-base/pkg/response"
 )
 
 // HttpConfig base configuration for the HTTP service (embeds rest.RestConf).
@@ -92,8 +93,8 @@ func RunHttp(opts ...HttpOption) {
 		conf.MustLoad(config.ConfigFile(), &c)
 	}
 
-	// Create server.
-	server := rest.MustNewServer(c.RestConf)
+	// Create server. Use unified UnauthorizedCallback for JWT (rest.WithJwt) so 401 responses have the same response format.
+	server := rest.MustNewServer(c.RestConf, rest.WithUnauthorizedCallback(response.UnauthorizedCallback))
 	defer server.Stop()
 
 	// Register middlewares.

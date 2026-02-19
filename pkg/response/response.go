@@ -89,6 +89,12 @@ func ErrorWithCode(w http.ResponseWriter, code int, msg string) {
 	})
 }
 
+// UnauthorizedCallback is for rest.WithUnauthorizedCallback (e.g. HTTP service JWT via rest.WithJwt).
+// It responds with HTTP 401 and the unified response format { code, msg }.
+func UnauthorizedCallback(w http.ResponseWriter, _ *http.Request, _ error) {
+	Error(w, errcode.ErrUnauthorized)
+}
+
 // ErrorInvalidParam returns an invalid-parameter error response (used for parameter parsing failures).
 // It converts a generic error into errcode.ErrInvalidParam.
 func ErrorInvalidParam(w http.ResponseWriter, err error) {
